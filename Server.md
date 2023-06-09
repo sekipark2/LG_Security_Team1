@@ -19,13 +19,22 @@ REST API document
         3. If the passcode is incorrect, the session information registered in the server is deleted.
         4. ...
         5. ...
+1. Manage Accounts
+    1. Change password
+    1. Change your email
+    1. When the password is incorrect more than 3 times
+    1. When you forgot your password
 1. Login
     1. General Scenario
         1. Enter ID/Password/OTP number.
         2. If correct, Server issues SessionID
         3. Future REST APIs need to request with SessionID
+        4. Client send IP address/Public Key to server.
+        5. server add client to live list.
     2. Exception scenario
-1. Change password
-1. Change your email
-1. When the password is incorrect more than 3 times
-1. When you forgot your password
+2. Log out
+    1. When client request log out, server deletes client's session id and remove the client from live list
+4. Get contact list
+    1. Server collects connected client list and send info to clients.
+    2. Clients request contact list periodically.
+    3. Contact information consists of basic client information, IP, and Public Key.
