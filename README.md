@@ -1,5 +1,6 @@
 # LG_Security_Team1
 
+[Server Requirements](Server.md)
 
 ## Requirement
 1. The ability for the **user to register with the system**. This specific requirement has the following subcomponents.
