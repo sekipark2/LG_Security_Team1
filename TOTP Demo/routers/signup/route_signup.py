@@ -10,13 +10,13 @@ from fastapi.templating import Jinja2Templates
 from schemas.users import UserCreate
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
-from webapps.signup.forms import UserCreateForm
+from routers.signup.forms import UserCreateForm
 import pyqrcode
 import png
 
 
 templates = Jinja2Templates(directory="templates")
-router = APIRouter(include_in_schema=False)
+router = APIRouter(include_in_schema=True)
 
 
 @router.get("/signup/")
