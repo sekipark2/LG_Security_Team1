@@ -10,7 +10,12 @@ bool AesDecryptForRecieve(const unsigned char* msg, size_t msg_len,
 bool LoadAesKeyFromFile(const std::string& filename, unsigned char* key, size_t keyLength);
 bool SaveAesKeyToFile(const std::string& filename, const unsigned char* key, size_t keyLength);
 EVP_PKEY* GetRsaKey(std::string& pubkey);
-bool saveRSAKeyToFile(const std::string& filename, const EVP_PKEY* key, const std::string& passphrase = "");
-EVP_PKEY* loadRSAKeyFromFile(const std::string& filename, const std::string& passphrase);
 void GetAesKey(unsigned char* aes_key, size_t aes_key_len, std::string filename = "");
 void GenerateAesKey(unsigned char* aes_key, size_t aes_key_len);
+bool GetEncodedPublicKey(std::string& encoded_pub_key);
+bool GenerateEncryptedKeyData(const unsigned int call_status,
+    unsigned char* encrypted_key_data,
+    size_t* encrypted_key_data_size);
+bool ParsingEncryptedKeyData(unsigned int& call_status,
+    unsigned char* encrypted_key_data,
+    size_t encrypted_key_data_size);

@@ -482,6 +482,7 @@ static INT_PTR CALLBACK LoginProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM
         {
             if (LOWORD(wParam) == IDOK)
             {
+                CryptoInitialize();
                 if (LoginFromApp(hDlg) == 0)
                 {
                     SendMessage(hWndMainToolbar, TB_SETSTATE, IDM_CONNECT,

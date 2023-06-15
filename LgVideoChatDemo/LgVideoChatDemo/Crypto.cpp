@@ -18,6 +18,21 @@ std::string g_recieved_rsa_pub_key;
 std::string g_rsa_pub_key;
 EVP_PKEY* g_rsa_key;
 unsigned char g_aes_key[AES_KEY_LENGTH];
+unsigned char g_recieved_aes_key[AES_KEY_LENGTH];
+
+std::string Base64Decode(const std::string& encoded);
+std::string Base64Encode(const std::string& encoded);
+bool saveRSAKeyToFile(const std::string& filename, const EVP_PKEY* key,
+    const std::string& passphrase, const std::string& pubkey);
+EVP_PKEY* loadRSAKeyFromFile(const std::string& filename,
+    const std::string& passphrase,
+    std::string& pubkey);
+bool GenerateEncryptedKeyData(const unsigned int call_status,
+    unsigned char* encrypted_key_data,
+    size_t* encrypted_key_data_size);
+bool ParsingEncryptedKeyData(unsigned int& call_status,
+    unsigned char* encrypted_key_data,
+    size_t encrypted_key_data_size);
 
 EVP_PKEY* GenerateRsaKey(std::string& pubkey) {
     int ret = 0;
@@ -63,6 +78,7 @@ EVP_PKEY* GenerateRsaKey(std::string& pubkey) {
     publicKeyLen = BIO_pending(publicBio);
     pubkey.resize(publicKeyLen);
     BIO_read(publicBio, &pubkey[0], publicKeyLen);
+    BIO_free(publicBio);
 free_all:
 
     EVP_PKEY_CTX_free(ctx);
@@ -74,11 +90,13 @@ free_all:
 EVP_PKEY* GetRsaKey(std::string& pubkey) {
     std::string filename = "rsa_key.hex";
     std::string passphrase = "mypassword";
-    
+    BIO* publicBio = NULL;
+    int publicKeyLen = 0;
+
     std::cout << "### LoadOrGenerateRsaKey" << std::endl;
 
     // Load RSA key from PEM file
-    EVP_PKEY* rsaKey = loadRSAKeyFromFile(filename, passphrase);
+    EVP_PKEY* rsaKey = loadRSAKeyFromFile(filename, passphrase, pubkey);
     if (!rsaKey) {
         std::cout << "### Failed to load RSA private key from file." << std::endl;
 
@@ -86,12 +104,14 @@ EVP_PKEY* GetRsaKey(std::string& pubkey) {
         std::cout << "### GenerateRsaKey" << std::endl;
 
         // Save RSA key to PEM file
-        if (!saveRSAKeyToFile(filename, rsaKey, passphrase)) {
+        if (!saveRSAKeyToFile(filename, rsaKey, passphrase, pubkey)) {
             std::cout << "### Failed to save RSA key to PEM file." << std::endl;
             EVP_PKEY_free(rsaKey);
             return nullptr;
         }
+
     }
+
     return rsaKey;
  
 }
@@ -131,7 +151,10 @@ EVP_PKEY* hexToRSAKey(const std::string& hexKey) {
     return evpKey;
 }
 
-EVP_PKEY* loadRSAKeyFromFile(const std::string& filename, const std::string& passphrase) {
+EVP_PKEY* loadRSAKeyFromFile(const std::string& filename,
+                             const std::string& passphrase,
+                             std::string& pubkey) {
+    EVP_PKEY* evpKey = NULL;
     std::ifstream file("rsa_key.hex");
     std::cout << "### try to load RSA key " << std::endl;
 
@@ -143,24 +166,33 @@ EVP_PKEY* loadRSAKeyFromFile(const std::string& filename, const std::string& pas
         std::cout <<"@@@@ hex from file :" << hexKey << std::endl;
 
         // 16진수 형식의 키를 EVP 형식으로 변환        
-        EVP_PKEY* evpKey = hexToRSAKey(hexKey);
+        evpKey = hexToRSAKey(hexKey);
         if (evpKey != nullptr) {
             std::cout << "### RSA key loaded successfully." << std::endl;
-                        
-            EVP_PKEY_free(evpKey);
-            return evpKey;
         }
         else {
             std::cerr << "### Failed to load RSA key." << std::endl;
+            return NULL;
         }
     } 
     else {
         std::cerr << "### Failed to open file for reading." << std::endl;
     }
-    return nullptr;
+    std::ifstream pubfile("rsa_key.pub");
+    std::cout << "### try to load RSA key " << std::endl;
+
+    if (pubfile.is_open()) {
+        std::stringstream buffer;
+        buffer << pubfile.rdbuf();
+        pubkey.resize(buffer.str().size());
+        pubkey = buffer.str();
+        std::cout << "@@@@ pub file :" << pubkey << std::endl;
+    }
+    return evpKey;
 }
 
-bool saveRSAKeyToFile(const std::string& filename, const EVP_PKEY* key, const std::string& passphrase) {
+bool saveRSAKeyToFile(const std::string& filename, const EVP_PKEY* key,
+                      const std::string& passphrase, const std::string& pubkey) {
     std::cout << "### saveRSAKeyToFile" << std::endl;
     
     // 키를 16진수로 저장
@@ -179,6 +211,17 @@ bool saveRSAKeyToFile(const std::string& filename, const EVP_PKEY* key, const st
     else {
         std::cerr << "### Failed to open file for writing." << std::endl;
     }
+    // 파일에 public key 저장
+    std::ofstream pubfile("rsa_key.pub");
+    if (pubfile.is_open()) {
+        pubfile << pubkey;
+        pubfile.close();
+        std::cout << "### RSA key saved to rsa_key.pub" << std::endl;
+    }
+    else {
+        std::cerr << "### Failed to open file for writing." << std::endl;
+    }
+
     return true;
 }
 void GetAesKey(unsigned char* aes_key, size_t aes_key_len, std::string filename) {
@@ -458,8 +501,7 @@ bool LoadAesKeyFromFile(const std::string& filename, unsigned char* key, size_t 
 }
 void CryptoInitialize() {
     std::cout << "================ Crypto Initialize ==============" << std::endl;
-    std::string g_rsa_pub_key;
-    EVP_PKEY* g_rsa_key = GetRsaKey(g_rsa_pub_key);
+    g_rsa_key = GetRsaKey(g_rsa_pub_key);
     GetAesKey(g_aes_key, sizeof(g_aes_key), "aes_key.bin");
 
     const unsigned char* msg = (const unsigned char*)"Hello World!!!!!!!!!";
@@ -474,6 +516,22 @@ void CryptoInitialize() {
     AesDecryptForRecieve(encrypted_msg.data(), encrypted_msg.size(), &decrypted_msg, &decrypted_msg_len);
     std::cout << "decrypted_msg_len:" << decrypted_msg_len << std::endl;
     std::cout << "decrypted_msg:" << decrypted_msg.data() << std::endl;
+
+    std::string input = "Hello, World!";
+    std::string encoded = Base64Encode(input);
+    std::string decoded = Base64Decode(encoded);
+
+    std::cout << "Original: " << input << std::endl;
+    std::cout << "Encoded: " << encoded << std::endl;
+    std::cout << "Decoded: " << decoded << std::endl;
+
+    unsigned int callstatus = 1;
+    unsigned char tempbuf[1000] = { 0 };
+    size_t outsizse = 0;
+
+    g_recieved_rsa_pub_key = g_rsa_pub_key;
+    GenerateEncryptedKeyData(callstatus, tempbuf, &outsizse);
+    ParsingEncryptedKeyData(callstatus, tempbuf, outsizse);
 }
 
 void CryptoTest() {
@@ -529,22 +587,98 @@ bool SetRecievedRsaPublicKey(std::string publickey)
     return true;
 }
 
-bool GenerateEncryptedKeyData(unsigned char* encrypted_key_data, size_t* encrypted_key_data_size)
+bool GenerateEncryptedKeyData(const unsigned int call_status,
+                              unsigned char* encrypted_key_data,
+                              size_t* encrypted_key_data_size)
 {
      /*
-     * | 32byte aes key | 256byte public key | 256byte recieved public key |
-     * Total 544byte
+     * | 4byte Call Status | 32byte aes key |
+     * Total 36byte
      */
+    std::vector<unsigned char> key_data;
+    char* call_status_start = (char*)&call_status;
+    char* call_status_end = (char*)&call_status + sizeof(unsigned int);
+
     if (!encrypted_key_data) return false;
     if (!g_recieved_rsa_pub_key.length()) return false;
+    if (call_status > 2) return false;
 
-    std::vector<unsigned char> key_data(g_aes_key, g_aes_key + sizeof(g_aes_key));
-    key_data.insert(key_data.end(), g_rsa_pub_key.data(), g_rsa_pub_key.data() + g_rsa_pub_key.length());
-    key_data.insert(key_data.end(), g_recieved_rsa_pub_key.data(),
-        g_recieved_rsa_pub_key.data() + g_recieved_rsa_pub_key.length());
+    key_data.insert(key_data.end(), call_status_start, call_status_end);
+
+    if (!call_status) {
+        key_data.insert(key_data.end(), g_aes_key, g_aes_key + AES_KEY_LENGTH);
+    }
+    else {
+        key_data.resize(key_data.size() + AES_KEY_LENGTH, 0);
+    }
     std::cout << "key_data length:" << key_data.size() << std::endl;
-    encryptWithPublicKey(g_recieved_rsa_pub_key, (const unsigned char*)g_recieved_rsa_pub_key.data(),
-        g_recieved_rsa_pub_key.length(), encrypted_key_data, encrypted_key_data_size);
+    encryptWithPublicKey(g_recieved_rsa_pub_key, (const unsigned char*)key_data.data(),
+        key_data.size(), encrypted_key_data, encrypted_key_data_size);
+    std::cout << "encrypted key_data length:" << *encrypted_key_data_size << std::endl;
+    return true;
+}
 
+bool ParsingEncryptedKeyData(unsigned int& call_status,
+                             unsigned char* encrypted_key_data,
+                             size_t encrypted_key_data_size)
+{
+    /*
+    * encrypted size is 256byte
+    * | 4byte Call Status | 32byte aes key |
+    * Total decrypted sizse is 36
+    */
+    unsigned char decrypt_data[1000] = { 0 };
+    size_t decrypt_size = 0;
+    RsaDecrypt(g_rsa_key, encrypted_key_data, encrypted_key_data_size,
+        decrypt_data, &decrypt_size);
+    call_status = (unsigned int)*decrypt_data;
+    std::cout << "decrypted call_status:" << call_status << std::endl;
+    return true;
+}
+
+std::string Base64Encode(const std::string& input) {
+    BIO* bio, * b64;
+    BUF_MEM* bufferPtr;
+
+    b64 = BIO_new(BIO_f_base64());
+    bio = BIO_new(BIO_s_mem());
+    bio = BIO_push(b64, bio);
+
+    BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
+    BIO_write(bio, input.c_str(), static_cast<int>(input.length()));
+    BIO_flush(bio);
+    BIO_get_mem_ptr(bio, &bufferPtr);
+
+    std::string encoded(bufferPtr->data, bufferPtr->length);
+    BIO_free_all(bio);
+
+    return encoded;
+}
+
+std::string Base64Decode(const std::string& encoded) {
+    BIO* bio, * b64;
+    char* buffer = new char[encoded.size()];
+    memset(buffer, 0, encoded.size());
+
+    b64 = BIO_new(BIO_f_base64());
+    bio = BIO_new_mem_buf(encoded.c_str(), static_cast<int>(encoded.size()));
+    bio = BIO_push(b64, bio);
+
+    BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
+    int length = BIO_read(bio, buffer, static_cast<int>(encoded.size()));
+    BIO_free_all(bio);
+
+    std::string decoded(buffer, length);
+    delete[] buffer;
+
+    return decoded;
+}
+
+bool GetEncodedPublicKey(std::string& encoded_pub_key) {
+    if (!g_rsa_pub_key.size()) {
+        std::cout << "rsa public key doesn't generated" << std::endl;
+        return false;
+    }
+    encoded_pub_key = Base64Encode(g_rsa_pub_key);
     return true;
 }

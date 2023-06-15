@@ -222,7 +222,7 @@ static DWORD WINAPI ThreadVideoClient(LPVOID ivalue)
                  {
                    int iResult;
                    iResult = ReadDataTcpNoBlock(Client, (unsigned char*)InputBufferWithOffset, InputBytesNeeded);
-                   std::cout << "Client iResult:" << iResult << std::endl;
+                   //std::cout << "Client iResult:" << iResult << std::endl;
                    if (iResult != SOCKET_ERROR)
                    {
                        if (iResult == 0)
@@ -268,7 +268,7 @@ static DWORD WINAPI ThreadVideoClient(LPVOID ivalue)
                                        &decryptedRecvbuff, &decrypted_size)) {
                                        std::cout << "Client decryption failed";
                                    }
-                                   std::cout << "Client Decrypted size:" << decrypted_size  << std::endl;
+                                   //std::cout << "Client Decrypted size:" << decrypted_size  << std::endl;
                                    cv::imdecode(cv::Mat(SizeofImage, 1, CV_8UC1, decryptedRecvbuff.data()), cv::IMREAD_COLOR, &ImageIn);
                                    DispayImage(ImageIn);
                                    decryptedRecvbuff.clear();
@@ -326,7 +326,7 @@ static DWORD WINAPI ThreadVideoClient(LPVOID ivalue)
          {
              std::cout << "Client encryption failed" << std::endl;
          }
-         std::cout << "Client Encrypted_Size: " << encyprted_size <<" buffsize:"<< encryptedSendbuff.size() << std::endl;
+         //std::cout << "Client Encrypted_Size: " << encyprted_size <<" buffsize:"<< encryptedSendbuff.size() << std::endl;
          numbytes = htonl((unsigned long)encryptedSendbuff.size());
          if (WriteDataTcp(Client, (unsigned char*)&numbytes, sizeof(numbytes)) == sizeof(numbytes))
          {

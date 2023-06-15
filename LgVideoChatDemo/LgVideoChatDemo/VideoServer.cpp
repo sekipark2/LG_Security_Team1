@@ -13,6 +13,7 @@
 #include "DisplayImage.h"
 #include "Camera.h"
 #include "Crypto.h"
+#include "CallStatus.h"
 
 static  std::vector<uchar> sendbuff;//buffer for coding
 static  std::vector<uchar> encryptedSendbuff;//buffer for Encryption
@@ -27,6 +28,8 @@ static SOCKET Accept = INVALID_SOCKET;
 static cv::Mat ImageIn;
 static DWORD ThreadVideoServerID;
 static HANDLE hThreadVideoServer = INVALID_HANDLE_VALUE;
+static DWORD ThreadCallStatusID;
+static HANDLE hThreadCallStatus = INVALID_HANDLE_VALUE;
 static int NumEvents;
 static unsigned int InputBytesNeeded;
 static char* InputBuffer = NULL;
@@ -45,6 +48,7 @@ bool StartVideoServer(bool &Loopback)
     {
         hThreadVideoServer = CreateThread(NULL, 0, ThreadVideoServer, &Loopback, 0, &ThreadVideoServerID);
     }
+  StartWaitCallThread();
   return true;
 }
 bool StopVideoServer(void)
@@ -55,6 +59,7 @@ bool StopVideoServer(void)
         WaitForSingleObject(hThreadVideoServer, INFINITE);
         hThreadVideoServer = INVALID_HANDLE_VALUE;
     }
+    StopWaitCall();
     VideoServerCleanup();
     return true;
 }
@@ -310,7 +315,7 @@ static DWORD WINAPI ThreadVideoServer(LPVOID ivalue)
                          buffer = new (std::nothrow) unsigned char[bytesAvailable];
                          //std::cout << "FD_READ "<< bytesAvailable << std::endl;
                          iResult = ReadDataTcpNoBlock(Accept, buffer, bytesAvailable);
-                         std::cout << "Server iResult:" << iResult << std::endl;
+                         //std::cout << "Server iResult:" << iResult << std::endl;
                          if (iResult > 0)
                          {
                              bytestosend = iResult;
@@ -379,9 +384,10 @@ static DWORD WINAPI ThreadVideoServer(LPVOID ivalue)
                                          &decryptedRecvbuff, &decrypted_size)) {
                                          std::cout << "Server decryption failed";
                                      }
-                                     std::cout << "Server Decrypted size:" << decrypted_size << std::endl;
+                                     //std::cout << "Server Decrypted size:" << decrypted_size << std::endl;
                                      cv::imdecode(cv::Mat(SizeofImage, 1, CV_8UC1, decryptedRecvbuff.data()), cv::IMREAD_COLOR, &ImageIn);
                                      DispayImage(ImageIn);
+                                     decryptedRecvbuff.clear();
                                  }
                              }
 
@@ -434,11 +440,11 @@ static DWORD WINAPI ThreadVideoServer(LPVOID ivalue)
              {
                  std::cout << "Server encryption failed" << std::endl;
              }
-             std::cout << "Server Encrypted_Size: " << encyprted_size << " buffsize:" << encryptedSendbuff.size() << std::endl;
+             //std::cout << "Server Encrypted_Size: " << encyprted_size << " buffsize:" << encryptedSendbuff.size() << std::endl;
              numbytes = htonl((unsigned long)encryptedSendbuff.size());
              if (WriteDataTcp(Accept, (unsigned char*)&numbytes, sizeof(numbytes)) == sizeof(numbytes))
              {
-                 if (WriteDataTcp(Accept, (unsigned char*)encryptedSendbuff.data(), (int)encryptedSendbuff.size()) != sendbuff.size())
+                 if (WriteDataTcp(Accept, (unsigned char*)encryptedSendbuff.data(), (int)encryptedSendbuff.size()) != encryptedSendbuff.size())
                  {
                      std::cout << "WriteDataTcp encryptedSendbuff.data() Failed " << WSAGetLastError() << std::endl;
                      CleanUpClosedConnection();

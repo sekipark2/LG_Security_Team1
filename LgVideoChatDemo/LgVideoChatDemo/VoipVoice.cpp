@@ -754,7 +754,7 @@ static DWORD WINAPI CaptureMicThread(LPVOID ivalue)
                     {
                         std::cout << "Audio encryption failed" << std::endl;
                     }
-                    std::cout << "Encrypted Audio Send :" << encyprted_size << std::endl;
+                    //std::cout << "Encrypted Audio Send :" << encyprted_size << std::endl;
                     SendUdpVoipData((const char*)encryptedSendbuff.data(), encryptedSendbuff.size());
                     encryptedSendbuff.clear();
                     //SendUdpVoipData((const char*)cbits, nbBytes);
@@ -808,7 +808,7 @@ static DWORD WINAPI UdpRecievingWaitingThread(LPVOID ivalue)
                     &decryptedRecvbuff, &decrypted_size)) {
                     std::cout << "Client decryption failed";
                 }
-                std::cout << "Decrypted Audio Recv :" << decrypted_size << std::endl;
+                //std::cout << "Decrypted Audio Recv :" << decrypted_size << std::endl;
                 EnterCriticalSection(&CriticalSection);
                 index = VoipBufferQueue.push();
                 if (index != -1)

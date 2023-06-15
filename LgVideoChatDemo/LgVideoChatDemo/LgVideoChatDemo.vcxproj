@@ -130,6 +130,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="AecKsBinder.h" />
+    <ClInclude Include="CallStatus.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="Crypto.h" />
     <ClInclude Include="DisplayImage.h" />
@@ -150,6 +151,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AecKsBinder.cpp" />
+    <ClCompile Include="CallStatus.cpp" />
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="Crypto.cpp" />
     <ClCompile Include="DisplayImage.cpp" />
