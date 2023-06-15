@@ -44,9 +44,7 @@
 #define IDC_CHECKBOX_AEC       1020 
 #define IDC_CHECKBOX_NS        1021
 #define IDM_LOGIN              1022
-#define IDD_LOGIN_POPUP        1023
-#define IDC_EDIT_ID            1024
-#define IDC_EDIT_PASSWORD      1025
+#define IDM_CONTACTS           1023
 // Global Variables:
 
 HWND hWndMain;
@@ -73,7 +71,8 @@ static ATOM                MyRegisterClass(HINSTANCE hInstance);
 static BOOL                InitInstance(HINSTANCE, int);
 static LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 static INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
-static INT_PTR CALLBACK    Login(HWND, UINT, WPARAM, LPARAM);
+static INT_PTR CALLBACK    LoginProc(HWND, UINT, WPARAM, LPARAM);
+static INT_PTR CALLBACK    ContactsProc(HWND, UINT, WPARAM, LPARAM);
 
 
 static LRESULT OnCreate(HWND, UINT, WPARAM, LPARAM);
@@ -87,7 +86,6 @@ static void SetHostAddr(void);
 static void SetStdOutToNewConsole(void);
 static void DisplayMessageOkBox(const char* Msg);
 static bool OnlyOneInstance(void);
-static void OnLogin(HWND hWnd);
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -362,8 +360,12 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
                 OnStopServer(hWnd, message, wParam, lParam);
                 break;
             case IDM_LOGIN:
-                DialogBox(hInst, MAKEINTRESOURCE(IDD_LOGINBOX), hWnd, Login);
+                DialogBox(hInst, MAKEINTRESOURCE(IDD_LOGINBOX), hWnd, LoginProc);
                 break;
+            case IDM_CONTACTS:
+                DialogBox(hInst, MAKEINTRESOURCE(IDD_CONTACTSBOX), hWnd, ContactsProc);
+                break;
+
             default:
                 return DefWindowProc(hWnd, message, wParam, lParam);
             }
@@ -430,6 +432,29 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
           }
         }
         break;
+    case WM_LOGIN:
+        {
+            int errorCode = (int)wParam;
+            if (errorCode == 0)
+            {
+                SendMessage(hWndMainToolbar, TB_SETSTATE, IDM_CONNECT,
+                    (LPARAM)MAKELONG(TBSTATE_ENABLED, 0));
+                SendMessage(hWndMainToolbar, TB_SETSTATE, IDM_START_SERVER,
+                    (LPARAM)MAKELONG(TBSTATE_ENABLED, 0));
+                SendMessage(hWndMainToolbar, TB_SETSTATE, IDM_LOGIN,
+                    (LPARAM)MAKELONG(TBSTATE_INDETERMINATE, 0));
+                SendMessage(hWndMainToolbar, TB_SETSTATE, IDM_CONTACTS,
+                    (LPARAM)MAKELONG(TBSTATE_ENABLED, 0));
+            }
+            else
+            {
+                MessageBox(hWnd,
+                    _T("Your Email, Password or Authentication Code is incorrect"),
+                    _T("Login Failed"),
+                    MB_ICONEXCLAMATION | MB_OK);
+            }
+        }
+        break;
 
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);
@@ -458,18 +483,61 @@ static INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPa
 }
 
 // Message handler for login box.
-static INT_PTR CALLBACK Login(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+static INT_PTR CALLBACK LoginProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
     UNREFERENCED_PARAMETER(lParam);
     switch (message)
     {
     case WM_INITDIALOG:
+        {
+            HWND hWnd = GetDlgItem(hDlg, IDC_EDIT_IP);
+            SetWindowTextA(hWnd, LocalIpAddress);
+        }
         return (INT_PTR)TRUE;
 
     case WM_COMMAND:
-        if (LOWORD(wParam) == IDOK)
+        if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
         {
-            LoginFromApp(hDlg, LocalIpAddress);
+            if (LOWORD(wParam) == IDOK)
+            {
+                LoginFromApp(hDlg);
+            }
+
+            EndDialog(hDlg, LOWORD(wParam));
+            return (INT_PTR)TRUE;
+        }
+        break;
+    }
+    return (INT_PTR)FALSE;
+}
+
+// Message handler for contacts box.
+static INT_PTR CALLBACK ContactsProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    UNREFERENCED_PARAMETER(lParam);
+    switch (message)
+    {
+    case WM_INITDIALOG:
+        Contacts(hDlg);
+        return (INT_PTR)TRUE;
+
+    case WM_COMMAND:
+        if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
+        {
+            if (LOWORD(wParam) == IDOK)
+            {
+                HWND hWnd = GetDlgItem(hDlg, IDC_LIST_CONTACTS);
+                int lbItem = (int)SendMessage(hWnd, LB_GETCURSEL, 0, 0);
+                if (lbItem >= 0)
+                {
+                    int index = (int)SendMessage(hWnd, LB_GETITEMDATA, lbItem, 0);
+                    const char* ip = GetContactIp(index);
+                    strcpy_s(RemoteAddress, sizeof(RemoteAddress), ip);
+
+                    hWnd = GetDlgItem(hWndMain, IDC_EDIT_REMOTE);
+                    SetWindowTextA(hWnd, RemoteAddress);
+                }
+            }
 
             EndDialog(hDlg, LOWORD(wParam));
             return (INT_PTR)TRUE;
@@ -485,7 +553,7 @@ HWND CreateSimpleToolbar(HWND hWndParent)
 {
     // Declare and initialize local constants.
     const int ImageListID = 0;
-    const int numButtons = 5;
+    const int numButtons = 6;
     const int bitmapSize = 16;
 
     const DWORD buttonStyles = BTNS_AUTOSIZE;
@@ -519,11 +587,12 @@ HWND CreateSimpleToolbar(HWND hWndParent)
 
     TBBUTTON tbButtons[numButtons] =
     {
-        { MAKELONG(VIEW_NETCONNECT,    ImageListID), IDM_CONNECT,     TBSTATE_ENABLED,       buttonStyles, {0}, 0, (INT_PTR)L"Connect" },
+        { MAKELONG(VIEW_NETCONNECT,    ImageListID), IDM_CONNECT,     TBSTATE_INDETERMINATE, buttonStyles, {0}, 0, (INT_PTR)L"Connect" },
         { MAKELONG(VIEW_NETDISCONNECT, ImageListID), IDM_DISCONNECT,  TBSTATE_INDETERMINATE, buttonStyles, {0}, 0, (INT_PTR)L"Disconnect"},
-        { MAKELONG(VIEW_NETCONNECT,    ImageListID), IDM_START_SERVER,TBSTATE_ENABLED,       buttonStyles, {0}, 0, (INT_PTR)L"Start Server"},
+        { MAKELONG(VIEW_NETCONNECT,    ImageListID), IDM_START_SERVER,TBSTATE_INDETERMINATE, buttonStyles, {0}, 0, (INT_PTR)L"Start Server"},
         { MAKELONG(VIEW_NETDISCONNECT, ImageListID), IDM_STOP_SERVER, TBSTATE_INDETERMINATE, buttonStyles, {0}, 0, (INT_PTR)L"Stop Server"},
-        { MAKELONG(VIEW_NETCONNECT,    ImageListID), IDM_LOGIN,       TBSTATE_ENABLED,       buttonStyles, {0}, 0, (INT_PTR)L"Login"}
+        { MAKELONG(VIEW_NETCONNECT,    ImageListID), IDM_LOGIN,       TBSTATE_ENABLED,       buttonStyles, {0}, 0, (INT_PTR)L"Login"},
+        { MAKELONG(VIEW_NETDISCONNECT, ImageListID), IDM_CONTACTS,    TBSTATE_INDETERMINATE, buttonStyles, {0}, 0, (INT_PTR)L"Contacts"}
     };
 
     // Add buttons.
@@ -735,19 +804,6 @@ static void DisplayMessageOkBox(const char* Msg)
 
 }
 
-static void OnLogin(HWND hWnd)
-{
-    int result = 0;
-    CryptoInitialize();
-    if (!strlen(UserId) || !strlen(UserPw)) result = 1;
-
-    if (!result) {
-        MessageBox(hWnd, L"로그인 정보 확인", L"로그인 결과", MB_OK | MB_ICONINFORMATION);
-    }
-    else {
-        MessageBox(hWnd, L"로그인 취소", L"로그인 결과", MB_OK | MB_ICONINFORMATION);
-    }
-}
 static bool OnlyOneInstance(void)
 {
     HANDLE m_singleInstanceMutex = CreateMutex(NULL, TRUE, L"F2CBD5DE-2AEE-4BDA-8C56-D508CFD3F4DE");

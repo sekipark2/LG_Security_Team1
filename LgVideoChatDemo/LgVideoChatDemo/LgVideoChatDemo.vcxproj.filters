@@ -66,6 +66,9 @@
     <ClInclude Include="RESTful.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Crypto.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="LgVideoChatDemo.cpp">
@@ -104,6 +107,9 @@
     <ClCompile Include="RESTful.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Crypto.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="LgVideoChatDemo.rc">
@@ -117,5 +123,10 @@
     <Image Include="LgVideoChatDemo.ico">
       <Filter>Resource Files</Filter>
     </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="aes_key.bin">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

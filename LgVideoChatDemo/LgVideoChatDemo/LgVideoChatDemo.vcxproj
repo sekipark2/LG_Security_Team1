@@ -131,6 +131,7 @@
   <ItemGroup>
     <ClInclude Include="AecKsBinder.h" />
     <ClInclude Include="Camera.h" />
+    <ClInclude Include="Crypto.h" />
     <ClInclude Include="DisplayImage.h" />
     <ClInclude Include="FixedSizeQueue.h" />
     <ClInclude Include="framework.h" />
@@ -150,6 +151,7 @@
   <ItemGroup>
     <ClCompile Include="AecKsBinder.cpp" />
     <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="Crypto.cpp" />
     <ClCompile Include="DisplayImage.cpp" />
     <ClCompile Include="LgVideoChatDemo.cpp" />
     <ClCompile Include="litevad.cpp" />
@@ -167,6 +169,9 @@
   <ItemGroup>
     <Image Include="LgVideoChatDemo.ico" />
     <Image Include="small.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="aes_key.bin" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
