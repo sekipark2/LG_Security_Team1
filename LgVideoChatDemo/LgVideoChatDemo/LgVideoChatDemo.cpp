@@ -356,7 +356,6 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
             case IDM_LOGIN:
                 DialogBox(hInst, MAKEINTRESOURCE(IDD_LOGINBOX), hWnd, Login);
                 break;
-
             default:
                 return DefWindowProc(hWnd, message, wParam, lParam);
             }
@@ -727,6 +726,7 @@ static void DisplayMessageOkBox(const char* Msg)
     }
 
 }
+
 static bool OnlyOneInstance(void)
 {
     HANDLE m_singleInstanceMutex = CreateMutex(NULL, TRUE, L"F2CBD5DE-2AEE-4BDA-8C56-D508CFD3F4DE");
