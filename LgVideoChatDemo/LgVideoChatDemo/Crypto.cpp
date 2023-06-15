@@ -2,16 +2,22 @@
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
 #include <openssl/rand.h>
+#include <openssl/err.h>
 #include <iostream>
+#include <sstream>
+#include <fstream>
 #include "Crypto.h"
+#include <string>
+#include <iomanip>
 
+#define AES_KEY_LENGTH 32
 #define BUFFER_SIZE 64*1024
 #define IV_SIZE 16
 
 std::string g_recieved_rsa_pub_key;
 std::string g_rsa_pub_key;
 EVP_PKEY* g_rsa_key;
-unsigned char g_aes_key[32];
+unsigned char g_aes_key[AES_KEY_LENGTH];
 
 EVP_PKEY* GenerateRsaKey(std::string& pubkey) {
     int ret = 0;
@@ -65,6 +71,132 @@ free_all:
 
 }
 
+EVP_PKEY* GetRsaKey(std::string& pubkey) {
+    std::string filename = "rsa_key.hex";
+    std::string passphrase = "mypassword";
+    
+    std::cout << "### LoadOrGenerateRsaKey" << std::endl;
+
+    // Load RSA key from PEM file
+    EVP_PKEY* rsaKey = loadRSAKeyFromFile(filename, passphrase);
+    if (!rsaKey) {
+        std::cout << "### Failed to load RSA private key from file." << std::endl;
+
+        rsaKey = GenerateRsaKey(pubkey);
+        std::cout << "### GenerateRsaKey" << std::endl;
+
+        // Save RSA key to PEM file
+        if (!saveRSAKeyToFile(filename, rsaKey, passphrase)) {
+            std::cout << "### Failed to save RSA key to PEM file." << std::endl;
+            EVP_PKEY_free(rsaKey);
+            return nullptr;
+        }
+    }
+    return rsaKey;
+ 
+}
+std::string rsaKeyToHex(const EVP_PKEY* evpKey) {
+    BIO* bio = BIO_new(BIO_s_mem());
+    PEM_write_bio_PrivateKey(bio, evpKey, nullptr, nullptr, 0, nullptr, nullptr);
+
+    char* derKey;
+    long keyLen = BIO_get_mem_data(bio, &derKey);
+    std::string hexKey;
+
+    for (int i = 0; i < keyLen; ++i) {
+        std::ostringstream oss;
+        oss << std::hex << std::setw(2) << std::setfill('0') << (int)derKey[i];
+        hexKey += oss.str();
+    }
+
+    BIO_free(bio);
+
+    return hexKey;
+}
+EVP_PKEY* hexToRSAKey(const std::string& hexKey) {
+    std::string derKey;
+    derKey.reserve(hexKey.length() / 2);
+
+    for (size_t i = 0; i < hexKey.length(); i += 2) {
+        std::string byteString = hexKey.substr(i, 2);
+        unsigned char byte = static_cast<unsigned char>(std::strtoul(byteString.c_str(), nullptr, 16));
+        derKey.push_back(byte);
+    }
+
+    BIO* bio = BIO_new_mem_buf(derKey.c_str(), static_cast<int>(derKey.length()));
+    EVP_PKEY* evpKey = PEM_read_bio_PrivateKey(bio, nullptr, nullptr, nullptr);
+    BIO_free(bio);
+
+
+    return evpKey;
+}
+
+EVP_PKEY* loadRSAKeyFromFile(const std::string& filename, const std::string& passphrase) {
+    std::ifstream file("rsa_key.hex");
+    std::cout << "### try to load RSA key " << std::endl;
+
+    if (file.is_open()) {
+        std::stringstream buffer;
+        buffer << file.rdbuf();
+        std::string hexKey = buffer.str();
+        // 16진수로 저장된 키 출력
+        std::cout <<"@@@@ hex from file :" << hexKey << std::endl;
+
+        // 16진수 형식의 키를 EVP 형식으로 변환        
+        EVP_PKEY* evpKey = hexToRSAKey(hexKey);
+        if (evpKey != nullptr) {
+            std::cout << "### RSA key loaded successfully." << std::endl;
+                        
+            EVP_PKEY_free(evpKey);
+            return evpKey;
+        }
+        else {
+            std::cerr << "### Failed to load RSA key." << std::endl;
+        }
+    } 
+    else {
+        std::cerr << "### Failed to open file for reading." << std::endl;
+    }
+    return nullptr;
+}
+
+bool saveRSAKeyToFile(const std::string& filename, const EVP_PKEY* key, const std::string& passphrase) {
+    std::cout << "### saveRSAKeyToFile" << std::endl;
+    
+    // 키를 16진수로 저장
+    std::string hexKey = rsaKeyToHex(key);
+
+    // 16진수로 저장된 키 출력
+    std::cout << "@@@@ hex save to file :" << hexKey << std::endl;
+
+    // 파일에 16진수 형식의 키 저장
+    std::ofstream file("rsa_key.hex");
+    if (file.is_open()) {
+        file << hexKey;
+        file.close();
+        std::cout << "### RSA key saved to rsa_key.hex" << std::endl;
+    }
+    else {
+        std::cerr << "### Failed to open file for writing." << std::endl;
+    }
+    return true;
+}
+void GetAesKey(unsigned char* aes_key, size_t aes_key_len, std::string filename) {
+
+
+    if (!LoadAesKeyFromFile(filename, aes_key, aes_key_len)) {
+        std::cout << "## Failed to load AES key from file so Generate Aes key " << std::endl;
+
+        GenerateAesKey(aes_key, aes_key_len);
+        //    // 키 파일로 저장
+        if (SaveAesKeyToFile(filename, aes_key, aes_key_len)) {
+            std::cout << "## AES key saved to file: " << filename << std::endl;
+        }
+        else {
+            std::cout << "## Failed to save AES key to file." << std::endl;
+        }
+    }
+}
 void GenerateAesKey(unsigned char* aes_key, size_t aes_key_len) {
     if (!RAND_bytes(aes_key, aes_key_len)) {
         std::cout << "Error during AES key generation" << std::endl;
@@ -284,12 +416,51 @@ bool AesDecryptForRecieve(const unsigned char* msg, size_t msg_len,
     return true;
 }
 
+bool SaveAesKeyToFile(const std::string& filename, const unsigned char* key, size_t keyLength) {
+    std::cout << "## SaveAesKeyToFile" << std::endl;
+
+    std::ofstream file(filename, std::ios::binary);
+    if (!file) {
+        std::cerr << "Failed to open file: " << filename << std::endl;
+        return false;
+    }
+
+    file.write(reinterpret_cast<const char*>(key), keyLength);
+    file.close();
+
+    if (!file) {
+        std::cerr << "Error occurred while writing the key to file." << std::endl;
+        return false;
+    }
+
+    return true;
+}
+
+bool LoadAesKeyFromFile(const std::string& filename, unsigned char* key, size_t keyLength) {
+
+    std::cout << "## LoadAesKeyFromFile" << std::endl;
+
+    std::ifstream file(filename, std::ios::binary);
+    if (!file) {
+        std::cerr << "Failed to open file: " << filename << std::endl;
+        return false;
+    }
+
+    file.read(reinterpret_cast<char*>(key), keyLength);
+    file.close();
+
+    if (!file) {
+        std::cerr << "Error occurred while reading the key from file." << std::endl;
+        return false;
+    }
+
+    return true;
+}
 void CryptoInitialize() {
     std::cout << "================ Crypto Initialize ==============" << std::endl;
     std::string g_rsa_pub_key;
-    EVP_PKEY* g_rsa_key = GenerateRsaKey(g_rsa_pub_key);
-
-    GenerateAesKey(g_aes_key, sizeof(g_aes_key));
+    EVP_PKEY* g_rsa_key = GetRsaKey(g_rsa_pub_key);
+    GetAesKey(g_aes_key, sizeof(g_aes_key), "aes_key.bin");
 
     const unsigned char* msg = (const unsigned char*)"Hello World!!!!!!!!!";
     size_t msg_len = strlen((const char*)msg);

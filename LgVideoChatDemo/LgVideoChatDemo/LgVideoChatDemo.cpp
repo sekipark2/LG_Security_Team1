@@ -18,6 +18,7 @@
 #include "VideoClient.h"
 #include "litevad.h"
 #include "RESTful.h"
+#include "Crypto.h"
 
 #pragma comment(lib,"comctl32.lib")
 #ifdef _DEBUG
@@ -43,6 +44,9 @@
 #define IDC_CHECKBOX_AEC       1020 
 #define IDC_CHECKBOX_NS        1021
 #define IDM_LOGIN              1022
+#define IDD_LOGIN_POPUP        1023
+#define IDC_EDIT_ID            1024
+#define IDC_EDIT_PASSWORD      1025
 // Global Variables:
 
 HWND hWndMain;
@@ -60,6 +64,9 @@ static bool Loopback=false;
 static FILE* pCout = NULL;
 static HWND hWndMainToolbar;
 static HWND hWndEdit;
+
+char UserId[512] = "";
+char UserPw[512] = "";
 
 // Forward declarations of functions included in this code module:
 static ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -80,6 +87,7 @@ static void SetHostAddr(void);
 static void SetStdOutToNewConsole(void);
 static void DisplayMessageOkBox(const char* Msg);
 static bool OnlyOneInstance(void);
+static void OnLogin(HWND hWnd);
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -727,6 +735,19 @@ static void DisplayMessageOkBox(const char* Msg)
 
 }
 
+static void OnLogin(HWND hWnd)
+{
+    int result = 0;
+    CryptoInitialize();
+    if (!strlen(UserId) || !strlen(UserPw)) result = 1;
+
+    if (!result) {
+        MessageBox(hWnd, L"로그인 정보 확인", L"로그인 결과", MB_OK | MB_ICONINFORMATION);
+    }
+    else {
+        MessageBox(hWnd, L"로그인 취소", L"로그인 결과", MB_OK | MB_ICONINFORMATION);
+    }
+}
 static bool OnlyOneInstance(void)
 {
     HANDLE m_singleInstanceMutex = CreateMutex(NULL, TRUE, L"F2CBD5DE-2AEE-4BDA-8C56-D508CFD3F4DE");
