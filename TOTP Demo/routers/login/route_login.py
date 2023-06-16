@@ -22,13 +22,14 @@ import json
 templates = Jinja2Templates(directory="templates")
 router = APIRouter(include_in_schema=True)
 
-
 rest_session = {}
 web_session = {}
 contact_list = set()
 
+
 def create_session_key():
     return base64.b32encode(os.urandom(10)).decode('utf-8')
+
 
 @router.get("/login/")
 def login(request: Request):
