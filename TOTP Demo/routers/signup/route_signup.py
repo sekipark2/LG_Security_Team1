@@ -16,6 +16,8 @@ import png
 import smtplib
 import ssl
 from email.message import EmailMessage
+import time
+from core.hashing import Hasher
 
 # Define email sender and receiver
 email_sender = ''
@@ -69,7 +71,8 @@ async def register(request: Request, db: Session = Depends(get_db)):
     await form.load_data()
     if await form.is_valid():
         user = UserCreate(
-            email=form.email, password=form.password,
+            email=form.email,
+            password=form.password,
             secret=base64.b32encode(os.urandom(10)).decode('utf-8'),
             verified=False,
             fail_counter=0
@@ -83,7 +86,8 @@ async def register(request: Request, db: Session = Depends(get_db)):
             url.png(stream, scale=3)
             return templates.TemplateResponse("qrcode/qrcode.html", {"request": request, "data": base64.b64encode(stream.getvalue()).decode('utf-8')})
             #
-        except IntegrityError:
+        except IntegrityError as e:
+            print(e)
             form.__dict__.get("errors").append("Duplicate username or email")
             return templates.TemplateResponse("signup/signup.html", form.__dict__)
     return templates.TemplateResponse("signup/signup.html", form.__dict__)
