@@ -12,5 +12,7 @@ class User(Base):
     secret = Column(String, nullable=False)
     verified = Column(Boolean, nullable=False)
     fail_counter = Column(Integer, nullable=False)
+    updated = Column(Integer, nullable=False)
+    hash_id = Column(String, unique=True, nullable=False)
 # Add first name, last name, ip address, public key, ...
 
