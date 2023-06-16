@@ -8,12 +8,15 @@ def create_new_user(user: UserCreate, db: Session):
     user = User(
         email=user.email,
         hashed_password=Hasher.get_password_hash(user.password),
-        secret = user.secret
+        secret=user.secret,
+        verified=user.verified,
+        fail_counter=user.fail_counter
     )
     db.add(user)
     db.commit()
     db.refresh(user)
     return user
+
 
 
 def get_user_by_email(email: str, db: Session):

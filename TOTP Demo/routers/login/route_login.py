@@ -8,7 +8,7 @@ from database.session import get_db
 from fastapi import APIRouter
 from fastapi import Depends
 from fastapi import HTTPException
-from fastapi import Request
+from fastapi import Request, Response
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from routers.login.forms import LoginForm
@@ -22,6 +22,13 @@ templates = Jinja2Templates(directory="templates")
 router = APIRouter(include_in_schema=True)
 
 
+rest_session = {}
+web_session = {}
+contact_list = set()
+
+def create_session_key():
+    return base64.b32encode(os.urandom(10)).decode('utf-8')
+
 @router.get("/login/")
 def login(request: Request):
     return templates.TemplateResponse("login/login.html", {"request": request})
@@ -34,12 +41,29 @@ async def login(request: Request, db: Session = Depends(get_db)):
     if await form.is_valid():
         try:
             user: User = get_user_by_email(form.email, db=db)
-            if user is None or not Hasher.verify_password(form.password, user.hashed_password) or \
-                    not OTP.verify_otp(user.secret, form.token):
-                form.__dict__.get("errors").append("Incorrect Credentails")
-                return templates.TemplateResponse("login/login.html", form.__dict__)
+            if user:
+                print('fail_counter', user.fail_counter)
+                if user.fail_counter >= 3:
+                    form.__dict__.get("errors").append("You entered the incorrect password more than three times")
+                    return templates.TemplateResponse("login/login.html", form.__dict__)
 
-            return templates.TemplateResponse("home/index.html", {"request": request, "email": user.email})
+                check_password = Hasher.verify_password(form.password, user.hashed_password) \
+                                 and OTP.verify_otp(user.secret, form.token)
+                if not check_password:
+                    user.fail_counter += 1
+                    db.commit()
+
+                    form.__dict__.get("errors").append("Incorrect Credentails")
+                    return templates.TemplateResponse("login/login.html", form.__dict__)
+
+            response = templates.TemplateResponse("home/index.html", {"request": request, "email": user.email})
+            session_key = create_session_key()
+            web_session[session_key] = user.email
+            if user.fail_counter > 0:
+                user.fail_counter = 0
+                db.commit()
+            response.set_cookie(key='login_session', value=session_key)
+            return response
         except HTTPException:
             form.__dict__.update(msg="")
             form.__dict__.get("errors").append("Incorrect Email or Password")
@@ -65,9 +89,6 @@ class AppLoginData(BaseModel):
             return True
         return False
 
-current_session = {}
-contact_list = set()
-
 @router.post('/login_from_app')
 async def login_from_app(app_login_data: AppLoginData, db: Session = Depends(get_db)):
     if not await app_login_data.is_valid():
@@ -77,22 +98,42 @@ async def login_from_app(app_login_data: AppLoginData, db: Session = Depends(get
         }
 
     user: User = get_user_by_email(app_login_data.email, db=db)
-    if user is None or not Hasher.verify_password(app_login_data.password, user.hashed_password) or \
-            not OTP.verify_otp(user.secret, app_login_data.token):
+    if user:
+        print(user)
+        if user.fail_counter >= 3:
+            return {
+                'errorCode': -1,
+                'msg': 'You entered the incorrect password more than three times'
+            }
+        check_password = Hasher.verify_password(app_login_data.password, user.hashed_password) \
+                         and OTP.verify_otp(user.secret, app_login_data.token)
+
+        if not check_password:
+            user.fail_counter += 1
+            db.commit()
+            return {
+                'errorCode': -1,
+                'msg': 'Incorrect Credentails'
+            }
+            # add fail counter
+    else:
         app_login_data.__dict__.get("errors").append("Incorrect Credentails")
         return {
             'errorCode': -1,
             'msg': app_login_data.errors
         }
 
-    session_id = base64.b32encode(os.urandom(10)).decode('utf-8')
-    current_session[app_login_data.email] = session_id
+    if user.fail_counter > 0:
+        user.fail_counter = 0
+        db.commit()
+    session_id = create_session_key()
+    rest_session[app_login_data.email] = session_id
     contact_list.add(json.dumps({
         'email': app_login_data.email,
         'ip_address': app_login_data.ip_address
     }))
 
-    print(current_session)
+    print(rest_session)
     return {
         'errorCode': 0,
         'msg': 'Success',
@@ -108,10 +149,10 @@ def make_ret(code, msg):
 
 
 def check_session(email, session_id):
-    if email not in current_session.keys():
+    if email not in rest_session.keys():
         return False, make_ret(-1, 'not logged in')
 
-    if current_session[email] != session_id:
+    if rest_session[email] != session_id:
         return False, make_ret(-1, 'invalid connection')
 
     return True, {}

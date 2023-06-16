@@ -2,6 +2,7 @@ from database.base_class import Base
 from sqlalchemy import Column
 from sqlalchemy import Integer
 from sqlalchemy import String
+from sqlalchemy import Boolean
 
 
 class User(Base):
@@ -9,5 +10,7 @@ class User(Base):
     email = Column(String, unique=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     secret = Column(String, nullable=False)
+    verified = Column(Boolean, nullable=False)
+    fail_counter = Column(Integer, nullable=False)
 # Add first name, last name, ip address, public key, ...
 

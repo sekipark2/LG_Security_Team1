@@ -5,6 +5,8 @@ class UserCreate(BaseModel):
     email: str
     password: str
     secret: str
+    verified: bool
+    fail_counter: int
 
 
 class ShowUser(BaseModel):
