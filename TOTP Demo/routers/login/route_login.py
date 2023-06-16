@@ -18,13 +18,39 @@ from pydantic import BaseModel
 import base64
 import os
 import json
+import time
 
 templates = Jinja2Templates(directory="templates")
 router = APIRouter(include_in_schema=True)
 
 rest_session = {}
 web_session = {}
-contact_list = set()
+contact_list = {}
+
+class Contact:
+    email: str
+    hash_id: str
+    ip_address: str
+    rsa_public_key: str
+    refresh_time: int
+
+    def to_map(self):
+        return {
+            'email': self.email,
+            'hash_id': self.hash_id,
+            'ip_address': self.ip_address,
+            'rsa_public_key': self.rsa_public_key,
+            'refresh_time': self.refresh_time
+        }
+
+    def __hash__(self):
+        return hash(self.hash_id)
+
+    def expired(self):
+        duration = round(time.time() * 1000) - self.refresh_time
+        if duration > 1 * 60 * 60 * 1000:
+            return True
+
 
 
 def create_session_key():
@@ -131,13 +157,16 @@ async def login_from_app(app_login_data: AppLoginData, db: Session = Depends(get
         user.fail_counter = 0
         db.commit()
     session_id = create_session_key()
-    rest_session[app_login_data.email] = session_id
-    contact_list.add(json.dumps({
-        'email': app_login_data.email,
-        'hash_id': user.hash_id,
-        'ip_address': app_login_data.ip_address,
-        'rsa_public_key': app_login_data.rsa_public_key
-    }))
+    rest_session[user.email] = session_id
+
+    contact = Contact()
+    contact.email = app_login_data.email
+    contact.hash_id = user.hash_id
+    contact.ip_address = app_login_data.ip_address
+    contact.rsa_public_key = app_login_data.rsa_public_key
+    contact.refresh_time = round(time.time() * 1000)
+
+    contact_list[contact.email] = contact
 
     print(rest_session)
     return {
@@ -170,13 +199,27 @@ async def get_contacts(email, session_id):
     if not check_valid:
         return err
 
-    return make_ret(0, [json.loads(j) for j in contact_list])
+    return make_ret(0, [contact_list[i] for i in contact_list.keys()])
+
+
+class AppSessionData(BaseModel):
+    email: str
+    session: str
+
+    async def is_valid(self):
+        if not self.email or not (self.email.__contains__("@")):
+            self.errors.append("Email is required")
+        if not self.session:
+            self.errors.append("A valid session is required")
+        if not self.errors:
+            return True
+        return False
 
 
 @router.post('/contacts')
-async def get_contacts(email, session_id):
-    check_valid, err = check_session(email, session_id)
+async def get_contacts(app_session: AppSessionData):
+    check_valid, err = check_session(app_session.email, app_session.session)
     if not check_valid:
         return err
 
-    return make_ret(0, [json.loads(j) for j in contact_list])
+    return make_ret(0, [contact_list[i] for i in contact_list.keys()])
