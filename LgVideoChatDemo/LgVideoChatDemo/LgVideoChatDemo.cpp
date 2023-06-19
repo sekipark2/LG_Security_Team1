@@ -45,6 +45,7 @@
 #define IDC_CHECKBOX_NS        1021
 #define IDM_LOGIN              1022
 #define IDM_CONTACTS           1023
+#define IDM_MISSEDCALL         1024
 // Global Variables:
 
 HWND hWndMain;
@@ -73,6 +74,7 @@ static LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 static INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 static INT_PTR CALLBACK    LoginProc(HWND, UINT, WPARAM, LPARAM);
 static INT_PTR CALLBACK    ContactsProc(HWND, UINT, WPARAM, LPARAM);
+static INT_PTR CALLBACK    MissedCallProc(HWND, UINT, WPARAM, LPARAM);
 
 
 static LRESULT OnCreate(HWND, UINT, WPARAM, LPARAM);
@@ -365,6 +367,9 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
             case IDM_CONTACTS:
                 DialogBox(hInst, MAKEINTRESOURCE(IDD_CONTACTSBOX), hWnd, ContactsProc);
                 break;
+            case IDM_MISSEDCALL:
+                DialogBox(hInst, MAKEINTRESOURCE(IDD_MISSEDCALLBOX), hWnd, MissedCallProc);
+                break;
 
             default:
                 return DefWindowProc(hWnd, message, wParam, lParam);
@@ -432,29 +437,6 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
           }
         }
         break;
-    case WM_LOGIN:
-        {
-            int errorCode = (int)wParam;
-            if (errorCode == 0)
-            {
-                SendMessage(hWndMainToolbar, TB_SETSTATE, IDM_CONNECT,
-                    (LPARAM)MAKELONG(TBSTATE_ENABLED, 0));
-                SendMessage(hWndMainToolbar, TB_SETSTATE, IDM_START_SERVER,
-                    (LPARAM)MAKELONG(TBSTATE_ENABLED, 0));
-                SendMessage(hWndMainToolbar, TB_SETSTATE, IDM_LOGIN,
-                    (LPARAM)MAKELONG(TBSTATE_INDETERMINATE, 0));
-                SendMessage(hWndMainToolbar, TB_SETSTATE, IDM_CONTACTS,
-                    (LPARAM)MAKELONG(TBSTATE_ENABLED, 0));
-            }
-            else
-            {
-                MessageBox(hWnd,
-                    _T("Your Email, Password or Authentication Code is incorrect"),
-                    _T("Login Failed"),
-                    MB_ICONEXCLAMATION | MB_OK);
-            }
-        }
-        break;
 
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);
@@ -500,7 +482,23 @@ static INT_PTR CALLBACK LoginProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM
         {
             if (LOWORD(wParam) == IDOK)
             {
-                LoginFromApp(hDlg);
+                if (LoginFromApp(hDlg) == 0)
+                {
+                    SendMessage(hWndMainToolbar, TB_SETSTATE, IDM_CONNECT,
+                        (LPARAM)MAKELONG(TBSTATE_ENABLED, 0));
+                    SendMessage(hWndMainToolbar, TB_SETSTATE, IDM_START_SERVER,
+                        (LPARAM)MAKELONG(TBSTATE_ENABLED, 0));
+                    SendMessage(hWndMainToolbar, TB_SETSTATE, IDM_LOGIN,
+                        (LPARAM)MAKELONG(TBSTATE_INDETERMINATE, 0));
+                    SendMessage(hWndMainToolbar, TB_SETSTATE, IDM_CONTACTS,
+                        (LPARAM)MAKELONG(TBSTATE_ENABLED, 0));
+                    SendMessage(hWndMainToolbar, TB_SETSTATE, IDM_MISSEDCALL,
+                        (LPARAM)MAKELONG(TBSTATE_ENABLED, 0));
+                }
+                else
+                {
+                    return (INT_PTR)TRUE;
+                }
             }
 
             EndDialog(hDlg, LOWORD(wParam));
@@ -547,13 +545,37 @@ static INT_PTR CALLBACK ContactsProc(HWND hDlg, UINT message, WPARAM wParam, LPA
     return (INT_PTR)FALSE;
 }
 
+// Message handler for missed call box.
+static INT_PTR CALLBACK MissedCallProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    UNREFERENCED_PARAMETER(lParam);
+    switch (message)
+    {
+    case WM_INITDIALOG:
+        return (INT_PTR)TRUE;
+
+    case WM_COMMAND:
+        if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
+        {
+            if (LOWORD(wParam) == IDOK)
+            {
+            }
+
+            EndDialog(hDlg, LOWORD(wParam));
+            return (INT_PTR)TRUE;
+        }
+        break;
+    }
+    return (INT_PTR)FALSE;
+}
+
 HIMAGELIST g_hImageList = NULL;
 
 HWND CreateSimpleToolbar(HWND hWndParent)
 {
     // Declare and initialize local constants.
     const int ImageListID = 0;
-    const int numButtons = 6;
+    const int numButtons = 7;
     const int bitmapSize = 16;
 
     const DWORD buttonStyles = BTNS_AUTOSIZE;
@@ -592,7 +614,8 @@ HWND CreateSimpleToolbar(HWND hWndParent)
         { MAKELONG(VIEW_NETCONNECT,    ImageListID), IDM_START_SERVER,TBSTATE_INDETERMINATE, buttonStyles, {0}, 0, (INT_PTR)L"Start Server"},
         { MAKELONG(VIEW_NETDISCONNECT, ImageListID), IDM_STOP_SERVER, TBSTATE_INDETERMINATE, buttonStyles, {0}, 0, (INT_PTR)L"Stop Server"},
         { MAKELONG(VIEW_NETCONNECT,    ImageListID), IDM_LOGIN,       TBSTATE_ENABLED,       buttonStyles, {0}, 0, (INT_PTR)L"Login"},
-        { MAKELONG(VIEW_NETDISCONNECT, ImageListID), IDM_CONTACTS,    TBSTATE_INDETERMINATE, buttonStyles, {0}, 0, (INT_PTR)L"Contacts"}
+        { MAKELONG(VIEW_NETDISCONNECT, ImageListID), IDM_CONTACTS,    TBSTATE_INDETERMINATE, buttonStyles, {0}, 0, (INT_PTR)L"Contacts"},
+        { MAKELONG(VIEW_NETDISCONNECT, ImageListID), IDM_MISSEDCALL,  TBSTATE_INDETERMINATE, buttonStyles, {0}, 0, (INT_PTR)L"Missed Call"}
     };
 
     // Add buttons.

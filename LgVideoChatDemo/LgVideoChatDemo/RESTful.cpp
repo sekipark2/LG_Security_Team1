@@ -12,8 +12,8 @@ using namespace web::http;
 using namespace web::http::client;
 
 static utility::string_t serverUri;
-static utility::string_t email;
 static utility::string_t sessionId;
+static utility::string_t hashId;
 
 int LoginFromApp(HWND hDlg)
 {
@@ -42,6 +42,8 @@ int LoginFromApp(HWND hDlg)
     GetWindowTextW(hWnd, buffer, sizeof(buffer));
     data[U("ip_address")] = json::value::string(buffer, false);
 
+    data[U("rsa_public_key")] = json::value::string(buffer, false);
+
     try
     {
         http_client_config config;
@@ -69,7 +71,10 @@ int LoginFromApp(HWND hDlg)
     }
     catch (const std::exception& e)
     {
-        std::cout << "Error: " << e.what() << std::endl;
+        CString cstring(e.what());
+        MessageBox(hDlg,
+            cstring, U("Login Failed"),
+            MB_ICONEXCLAMATION | MB_OK);
         return -1;
     }
 
@@ -77,17 +82,23 @@ int LoginFromApp(HWND hDlg)
     if (errorCode == 0)
     {
         serverUri = uri;
-        email = data[U("email")].as_string();
         sessionId = json_return[U("session_id")].as_string();
+        hashId = json_return[U("hash_id")].as_string();
     }
-    SendMessage(hWndMain, WM_LOGIN, (WPARAM)errorCode, 0);
+    else
+    {
+        MessageBox(hDlg,
+            json_return[U("msg")].as_string().c_str(), U("Login Failed"),
+            MB_ICONEXCLAMATION | MB_OK);
+        return 1;
+    }
 
     return 0;
 }
 
 typedef struct
 {
-    utility::string_t email;
+    utility::string_t name;
     utility::string_t ip;
 } CONTACT;
 
@@ -95,9 +106,13 @@ static std::vector<CONTACT> contacts;
 
 int Contacts(HWND hDlg)
 {
+    json::value data;
     json::value json_return;
 
     contacts.clear();
+
+    data[U("hash_id")] = json::value::string(hashId);
+    data[U("session")] = json::value::string(sessionId);
 
     try
     {
@@ -106,11 +121,7 @@ int Contacts(HWND hDlg)
 
         http_client client(serverUri, config);
 
-        uri_builder builder(U("/contacts"));
-        builder.append_query(U("email"), email);
-        builder.append_query(U("session_id"), sessionId);
-
-        client.request(methods::GET, builder.to_string())
+        client.request(methods::POST, U("/contacts"), data.serialize(), U("application/json"))
             .then([](http_response response)
         {
             if (response.status_code() == status_codes::OK)
@@ -146,10 +157,11 @@ int Contacts(HWND hDlg)
     {
         json::value data = *it;
         CONTACT contact;
-        contact.email = data[U("email")].as_string();
+        contact.name = data[U("first_name")].as_string() + U(" ") + data[U("last_name")].as_string()
+            + U(" (") + data[U("email")].as_string() + U(")");
         contact.ip = data[U("ip_address")].as_string();
 
-        int pos = SendMessage(hWnd, LB_ADDSTRING, 0, (LPARAM)contact.email.c_str());
+        int pos = SendMessage(hWnd, LB_ADDSTRING, 0, (LPARAM)contact.name.c_str());
         SendMessage(hWnd, LB_SETITEMDATA, pos, (LPARAM)contacts.size());
 
         contacts.push_back(contact);
