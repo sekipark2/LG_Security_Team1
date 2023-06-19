@@ -147,6 +147,14 @@ async def login_from_app(app_login_data: AppLoginData, db: Session = Depends(get
                 'errorCode': -1,
                 'msg': 'Incorrect Credentials'
             }
+        time_diff = round(time.time() * 1000) - user.updated
+        MONTH = 30 * 24 * 60 * 60 * 1000
+        print(time_diff)
+        if time_diff > MONTH:
+            return {
+                'errorCode': -1,
+                'msg': 'Password is expired (> 30 days)'
+            }
     else:
         app_login_data.__dict__.get("errors").append("Incorrect Credentials")
         return {
