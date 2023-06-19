@@ -6,6 +6,7 @@
 #include "Resource.h"
 #include "VoipVoice.h"
 #include "LgVideoChatDemo.h"
+#include "Crypto.h"
 
 using namespace web;
 using namespace web::http;
@@ -42,7 +43,10 @@ int LoginFromApp(HWND hDlg)
     GetWindowTextW(hWnd, buffer, sizeof(buffer));
     data[U("ip_address")] = json::value::string(buffer, false);
 
-    data[U("rsa_public_key")] = json::value::string(buffer, false);
+    std::string b64_enc_key;
+    GetEncodedPublicKey(b64_enc_key);
+    data[U("rsa_public_key")] = web::json::value::string(utility::conversions::to_string_t(b64_enc_key));
+    std::cout << "@@@ ENC value : " << utility::conversions::to_utf8string(data[U("rsa_public_key")].as_string()) << std::endl;
 
     try
     {
@@ -84,6 +88,9 @@ int LoginFromApp(HWND hDlg)
         serverUri = uri;
         sessionId = json_return[U("session_id")].as_string();
         hashId = json_return[U("hash_id")].as_string();
+        std::cout << "@@@ ret msg value : " << utility::conversions::to_utf8string(json_return[U("msg")].as_string()) << std::endl;
+        std::cout << "@@@ ret session id value : " << utility::conversions::to_utf8string(sessionId) << std::endl;
+        std::cout << "@@@ ret hash id value : "<< utility::conversions::to_utf8string(hashId) << std::endl;
     }
     else
     {
