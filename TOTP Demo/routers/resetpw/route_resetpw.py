@@ -7,7 +7,7 @@ from core.hashing import Hasher
 from database.models.users import User
 from database.session import get_db
 from routers.resetpw.forms import ResetPwForm, ForgetPwForm
-from routers.signup.route_signup import verify_code
+from core.memo import password_reset_code, account_activation_code
 from sqlalchemy.exc import IntegrityError
 
 templates = Jinja2Templates(directory="templates")
@@ -21,14 +21,13 @@ def resetpassword(request: Request):
 
 @router.post("/resetpw/")
 async def resetpassword(request: Request, db: Session = Depends(get_db)):
-    print(verify_code)
     form = ResetPwForm(request)
     await form.load_data()
     if await form.is_valid():
-        if form.code not in verify_code:
+        if form.code not in password_reset_code:
             form.__dict__.get("errors").append("Don't mess with us buddy")
             return templates.TemplateResponse("resetpw/resetpw.html", form.__dict__)
-        user_email = verify_code[form.code]
+        user_email = password_reset_code[form.code]
         try:
             user = db.query(User).filter(User.email == user_email).first()
             if user is None:
@@ -59,12 +58,35 @@ async def forgetpassword(request: Request, db: Session = Depends(get_db)):
             if user is None:
                 form.__dict__.get("errors").append("Don't mess with us buddy")
                 return templates.TemplateResponse("resetpw/forgetpw.html", form.__dict__)
-            verify_code['123456'] = form.email # random long uuid4 code
-            print(verify_code)
-            # send verify_code[form.email]
+
+            # the code should be a random long uuid4 code
+            password_reset_code['123456'] = form.email
+
+            #
+            # send password_reset_code[form.email]
+            #
+
             response = {"msg": "please check your email for password reset code"}
             return response
         except IntegrityError:
             form.__dict__.get("errors").append("Don't mess with us buddy")
             return templates.TemplateResponse("resetpw/forgetpw.html", form.__dict__)
     return templates.TemplateResponse("resetpw/forgetpw.html", form.__dict__)
+
+
+@router.get("/active/{code}")
+async def active_account(code: str, db: Session = Depends(get_db)):
+    if len(code) == 6:
+        if code not in account_activation_code:
+            return {"msg": "don't mess with us buddy"}
+        user_email = account_activation_code[code]
+        try:
+            user = db.query(User).filter(User.email == user_email).first()
+            if user is None:
+                return {"msg": "don't mess with us buddy"}
+            user.verified = True
+            db.commit()
+            return {"msg": "your account has been activated"}
+        except IntegrityError:
+            return {"msg": "don't mess with us buddy"}
+    return {"msg": "don't mess with us buddy"}
