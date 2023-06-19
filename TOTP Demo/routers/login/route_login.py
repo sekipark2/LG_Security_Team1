@@ -4,7 +4,7 @@ import routers.signup.forms
 from core.hashing import Hasher
 from core.otp import OTP
 from database.models.users import User
-from database.repository.users import get_user_by_email
+from database.repository.users import get_user_by_email, create_session_key
 from database.session import get_db
 from fastapi import APIRouter
 from fastapi import Depends
@@ -15,9 +15,7 @@ from sqlalchemy.orm import Session
 from routers.login.forms import LoginForm
 
 from pydantic import BaseModel
-import base64
-import os
-import json
+
 import time
 
 templates = Jinja2Templates(directory="templates")
@@ -33,6 +31,9 @@ class Contact:
     ip_address: str
     rsa_public_key: str
     refresh_time: int
+    first_name: str
+    last_name: str
+    is_server: bool
 
     def to_map(self):
         return {
@@ -52,11 +53,6 @@ class Contact:
             return True
 
 
-
-def create_session_key():
-    return base64.b32encode(os.urandom(10)).decode('utf-8')
-
-
 @router.get("/login/")
 def login(request: Request):
     return templates.TemplateResponse("login/login.html", {"request": request})
@@ -69,24 +65,29 @@ async def login(request: Request, db: Session = Depends(get_db)):
     if await form.is_valid():
         try:
             user: User = get_user_by_email(form.email, db=db)
+            print(user)
             if user:
                 print('fail_counter', user.fail_counter)
                 if user.fail_counter >= 3:
                     form.__dict__.get("errors").append("You entered the incorrect password more than three times")
                     return templates.TemplateResponse("login/login.html", form.__dict__)
 
-                check_password = Hasher.verify_password(form.password, user.hashed_password) \
-                                 and OTP.verify_otp(user.secret, form.token)
+                check_password = Hasher.verify_password(form.password, user.hashed_password)
+                check_otp = OTP.verify_otp(user.secret, form.token)
                 if not check_password:
                     user.fail_counter += 1
                     db.commit()
-
+                if not check_password or not check_otp:
                     form.__dict__.get("errors").append("Incorrect Credentails")
                     return templates.TemplateResponse("login/login.html", form.__dict__)
 
-            response = templates.TemplateResponse("home/index.html", {"request": request, "email": user.email})
+            response = templates.TemplateResponse("home/index.html", {"request": request,
+                                                                      "email": user.email,
+                                                                      'first_name': user.first_name,
+                                                                      'last_name': user.last_name,
+                                                                      'address': user.address})
             session_key = create_session_key()
-            web_session[session_key] = user.email
+            web_session[session_key] = user.hash_id
             if user.fail_counter > 0:
                 user.fail_counter = 0
                 db.commit()
@@ -124,7 +125,7 @@ async def login_from_app(app_login_data: AppLoginData, db: Session = Depends(get
     if not await app_login_data.is_valid():
         return {
             'errorCode': -1,
-            'msg': app_login_data.errors
+            'msg': ','.join(app_login_data.errors)
         }
 
     user: User = get_user_by_email(app_login_data.email, db=db)
@@ -135,44 +136,47 @@ async def login_from_app(app_login_data: AppLoginData, db: Session = Depends(get
                 'errorCode': -1,
                 'msg': 'You entered the incorrect password more than three times'
             }
-        check_password = Hasher.verify_password(app_login_data.password, user.hashed_password) \
-                         and OTP.verify_otp(user.secret, app_login_data.token)
+        check_password = Hasher.verify_password(app_login_data.password, user.hashed_password)
+        check_otp = OTP.verify_otp(user.secret, app_login_data.token)
 
         if not check_password:
             user.fail_counter += 1
             db.commit()
+        if not check_otp or not check_password:
             return {
                 'errorCode': -1,
                 'msg': 'Incorrect Credentials'
             }
-            # add fail counter
     else:
         app_login_data.__dict__.get("errors").append("Incorrect Credentials")
         return {
             'errorCode': -1,
-            'msg': app_login_data.errors
+            'msg': ','.join(app_login_data.errors)
         }
 
     if user.fail_counter > 0:
         user.fail_counter = 0
         db.commit()
     session_id = create_session_key()
-    rest_session[user.email] = session_id
+    rest_session[user.hash_id] = session_id
 
     contact = Contact()
     contact.email = app_login_data.email
     contact.hash_id = user.hash_id
     contact.ip_address = app_login_data.ip_address
     contact.rsa_public_key = app_login_data.rsa_public_key
-    contact.refresh_time = round(time.time() * 1000)
+    # contact.refresh_time = round(time.time() * 1000)
+    contact.first_name = user.first_name
+    contact.last_name = user.last_name
 
-    contact_list[contact.email] = contact
+    contact_list[contact.hash_id] = contact
 
     print(rest_session)
     return {
         'errorCode': 0,
         'msg': 'Success',
-        'session_id': session_id
+        'session_id': session_id,
+        'hash_id': user.hash_id
     }
 
 
@@ -183,43 +187,86 @@ def make_ret(code, msg):
     }
 
 
-def check_session(email, session_id):
-    if email not in rest_session.keys():
+def check_session(hash_id, session_id):
+    if hash_id not in rest_session.keys():
         return False, make_ret(-1, 'not logged in')
 
-    if rest_session[email] != session_id:
+    if rest_session[hash_id] != session_id:
         return False, make_ret(-1, 'invalid connection')
 
     return True, {}
 
 
 @router.get('/contacts')
-async def get_contacts(email, session_id):
-    check_valid, err = check_session(email, session_id)
+async def get_contacts(hash_id, session_id):
+    check_valid, err = check_session(hash_id, session_id)
     if not check_valid:
         return err
 
     return make_ret(0, [contact_list[i] for i in contact_list.keys()])
 
 
-class AppSessionData(BaseModel):
-    email: str
+# class AppSessionData(BaseModel):
+#     hash_id: str
+#     session: str
+#
+#     async def is_valid(self):
+#         if not self.hash_id:
+#             self.errors.append("hash id is required")
+#         if not self.session:
+#             self.errors.append("A valid session is required")
+#         if not self.errors:
+#             return True
+#         return False
+
+class PeerData(BaseModel):
+    hash_id: str
+
+    async def is_valid(self):
+        if not self.hash_id:
+            self.errors.append("hash id is required")
+        if not self.errors:
+            return True
+        return False
+
+
+class AppSessionData(PeerData):
     session: str
 
     async def is_valid(self):
-        if not self.email or not (self.email.__contains__("@")):
-            self.errors.append("Email is required")
+        PeerData.is_valid(self)
         if not self.session:
             self.errors.append("A valid session is required")
         if not self.errors:
             return True
         return False
 
+class TurnOnServerData(AppSessionData):
+    is_server: bool
+
 
 @router.post('/contacts')
 async def get_contacts(app_session: AppSessionData):
-    check_valid, err = check_session(app_session.email, app_session.session)
+    check_valid, err = check_session(app_session.hash_id, app_session.session)
     if not check_valid:
         return err
 
     return make_ret(0, [contact_list[i] for i in contact_list.keys()])
+
+
+@router.post('/set_server')
+async def turn_on_server(app_session: TurnOnServerData):
+    print(app_session)
+    check_valid, err = check_session(app_session.hash_id, app_session.session)
+    if not check_valid:
+        return err
+
+    contact_list[app_session.hash_id].is_server = app_session.is_server
+    return make_ret(0, 'ok')
+
+
+@router.post('/check_peer')
+async def check_peer(peer_data: PeerData):
+    if peer_data.hash_id not in rest_session.keys():
+        return make_ret(-1, 'not logged in')
+    return make_ret(0, contact_list[peer_data.hash_id])

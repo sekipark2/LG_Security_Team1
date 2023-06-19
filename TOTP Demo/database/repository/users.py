@@ -3,6 +3,13 @@ from database.models.users import User
 from schemas.users import UserCreate
 from sqlalchemy.orm import Session
 import time
+import base64
+import os
+
+
+def create_session_key():
+    return base64.b32encode(os.urandom(10)).decode('utf-8')
+
 
 def create_new_user(user: UserCreate, db: Session):
     user = User(
@@ -12,7 +19,10 @@ def create_new_user(user: UserCreate, db: Session):
         verified=user.verified,
         fail_counter=user.fail_counter,
         updated=round(time.time() * 1000),
-        hash_id=Hasher.get_password_hash(user.email)
+        hash_id=create_session_key(),
+        first_name=user.first_name,
+        last_name=user.last_name,
+        address=user.address
     )
     db.add(user)
     db.commit()

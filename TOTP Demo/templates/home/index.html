@@ -12,33 +12,34 @@
       <div class="container-bg">
       </div>
       <div class="container-content">
-        <h1>Welcome,  {{email}}</h1>
+        <h1>Welcome, {{first_name}} {{last_name}}, {{email}}</h1>
+        <h1>{{address}}</h1>
         <a href="/logout">Log out</a>
         <form method="POST" action="/home">
-    <div><h5 class="header">Change User Info</h5></div>
+          <div><h5 class="header">Change User Info</h5></div>
 
-    <div class="error_text">
-      {% for error in errors %}
-        <li>{{error}}</li>
-      {% endfor %}
-    </div>
+          <div class="error_text">
+            {% for error in errors %}
+              <li>{{error}}</li>
+            {% endfor %}
+          </div>
 
-    <div class="form-field">
-      <input type="email" placeholder="Email" value="{{email}}" name="email" required/>
-    </div>
+          <div class="form-field">
+            <input type="email" placeholder="Email" value="{{email}}" name="email" required/>
+          </div>
 
-    <div class="form-field">
-      <input type="password" placeholder="Password" value="{{password}}" name="password" required/>
-    </div>
+          <div class="form-field">
+            <input type="password" placeholder="Password" value="{{password}}" name="password" required/>
+          </div>
 
-    <div class="form-field">
-      <input type="password" placeholder="Confirm Password" value="{{confirm_password}}" name="confirm_password" required/>
-    </div>
+          <div class="form-field">
+            <input type="password" placeholder="Confirm Password" value="{{confirm_password}}" name="confirm_password" required/>
+          </div>
 
-    <div class="form-field">
-      <button class="btn" type="submit">Submit</button>
-    </div>
-  </form>
+          <div class="form-field">
+            <button class="btn" type="submit">Submit</button>
+          </div>
+        </form>
       </div>
     </div>
   </div>

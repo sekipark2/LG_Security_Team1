@@ -75,8 +75,12 @@ async def register(request: Request, db: Session = Depends(get_db)):
             password=form.password,
             secret=base64.b32encode(os.urandom(10)).decode('utf-8'),
             verified=False,
-            fail_counter=0
+            fail_counter=0,
+            first_name=form.first_name,
+            last_name=form.last_name,
+            address=form.address
         )
+        print('first_name', form.first_name)
         try:
             user = create_new_user(user=user, db=db)
             data = 'otpauth://totp/LG-Secu-Team1:{0}?secret={1}&issuer=LG-Secu-Team1' \

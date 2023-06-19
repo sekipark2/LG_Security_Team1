@@ -14,5 +14,8 @@ class User(Base):
     fail_counter = Column(Integer, nullable=False)
     updated = Column(Integer, nullable=False)
     hash_id = Column(String, unique=True, nullable=False)
-# Add first name, last name, ip address, public key, ...
+    first_name = Column(String, unique=False, nullable=False)
+    last_name = Column(String, unique=False, nullable=False)
+    address = Column(String, unique=False, nullable=False)
+
 
