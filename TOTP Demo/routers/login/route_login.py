@@ -176,10 +176,10 @@ async def login_from_app(app_login_data: AppLoginData, db: Session = Depends(get
     # contact.refresh_time = round(time.time() * 1000)
     contact.first_name = user.first_name
     contact.last_name = user.last_name
+    contact.is_server = False
 
     contact_list[contact.hash_id] = contact
 
-    print(rest_session)
     return {
         'errorCode': 0,
         'msg': 'Success',
@@ -227,30 +227,28 @@ async def get_contacts(hash_id, session_id):
 #             return True
 #         return False
 
-class PeerData(BaseModel):
+
+class AppSessionData(BaseModel):
+    session: str
     hash_id: str
 
     async def is_valid(self):
         if not self.hash_id:
             self.errors.append("hash id is required")
-        if not self.errors:
-            return True
-        return False
-
-
-class AppSessionData(PeerData):
-    session: str
-
-    async def is_valid(self):
-        PeerData.is_valid(self)
         if not self.session:
             self.errors.append("A valid session is required")
         if not self.errors:
             return True
         return False
 
+
 class TurnOnServerData(AppSessionData):
     is_server: bool
+
+
+class PeerData(AppSessionData):
+    peer_hash_id: str
+
 
 
 @router.post('/contacts')
@@ -264,7 +262,6 @@ async def get_contacts(app_session: AppSessionData):
 
 @router.post('/set_server')
 async def turn_on_server(app_session: TurnOnServerData):
-    print(app_session)
     check_valid, err = check_session(app_session.hash_id, app_session.session)
     if not check_valid:
         return err
@@ -275,6 +272,9 @@ async def turn_on_server(app_session: TurnOnServerData):
 
 @router.post('/check_peer')
 async def check_peer(peer_data: PeerData):
-    if peer_data.hash_id not in rest_session.keys():
-        return make_ret(-1, 'not logged in')
-    return make_ret(0, contact_list[peer_data.hash_id])
+    check_valid, err = check_session(peer_data.hash_id, peer_data.session)
+    if not check_valid:
+        return err
+    if peer_data.peer_hash_id not in rest_session.keys():
+        return make_ret(-1, 'not valid peer hash_id')
+    return make_ret(0, contact_list[peer_data.peer_hash_id])
