@@ -70,6 +70,7 @@ async def resetpassword(request: Request, db: Session = Depends(get_db)):
                 form.__dict__.get("errors").append("Don't mess with us buddy")
                 return templates.TemplateResponse("resetpw/resetpw.html", form.__dict__)
             user.hashed_password = Hasher.get_password_hash(form.password)
+            user.fail_counter = 0
             db.commit()
             response = templates.TemplateResponse("home/index.html", {"request": request, "email": user.email})
             return response
