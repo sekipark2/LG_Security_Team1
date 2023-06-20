@@ -22,6 +22,10 @@ body {
   padding: 0;
 }
 
+a {
+    color: gray
+}
+
 form {
   width: 350px;
   position: relative;

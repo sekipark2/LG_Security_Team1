@@ -131,6 +131,11 @@ async def login_from_app(app_login_data: AppLoginData, db: Session = Depends(get
     user: User = get_user_by_email(app_login_data.email, db=db)
     if user:
         print(user)
+        if not user.verified:
+            return {
+                'errorCode': -1,
+                'msg': 'Your email is not verified. check your email inbox.'
+            }
         if user.fail_counter >= 3:
             return {
                 'errorCode': -1,

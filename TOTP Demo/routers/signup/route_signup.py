@@ -33,7 +33,7 @@ def send_verify_mail(email):
     # verify_code[email] = code
     account_activation_code[code] = email
 
-    subject = 'Test for OTP'
+    subject = 'Activate your account (LG_SECU_TEAM1)'
     # body = "Your account activation code is '%s'" % code
     body = "Please go to %s/active/%s to activate your account" % (settings.server_address, code)
 
