@@ -60,7 +60,6 @@ static WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class 
 
 static char RemoteAddress[512]="127.0.0.1";
 static bool Loopback=false;
-static std::string RemotePublicKey;
 
 static FILE* pCout = NULL;
 static HWND hWndMainToolbar;
@@ -534,8 +533,11 @@ static INT_PTR CALLBACK ContactsProc(HWND hDlg, UINT message, WPARAM wParam, LPA
                     int index = (int)SendMessage(hWnd, LB_GETITEMDATA, lbItem, 0);
                     const char* ip = GetContactIp(index);
                     strcpy_s(RemoteAddress, sizeof(RemoteAddress), ip);
-                    RemotePublicKey = GetContactKey(index);
+                    std::string RemotePublicKey = GetContactKey(index);
                     std::cout << "Public Key: " << RemotePublicKey << std::endl;
+                    if (!SetRecievedRsaPublicKey(Base64Decode(RemotePublicKey))) {
+                        std::cout << "Failed to set pub key" << std::endl;
+                    }
 
                     hWnd = GetDlgItem(hWndMain, IDC_EDIT_REMOTE);
                     SetWindowTextA(hWnd, RemoteAddress);

@@ -7,6 +7,10 @@ bool AesEncryptForSend(const unsigned char* msg, size_t msg_len,
     std::vector<unsigned char>* encrypted_msg, size_t* encrypted_msg_len);
 bool AesDecryptForRecieve(const unsigned char* msg, size_t msg_len,
     std::vector<unsigned char>* decrypted_msg, size_t* decrypted_msg_len);
+bool AesEncryptForSendEx(const unsigned char* msg, size_t msg_len,
+    std::vector<unsigned char>* encrypted_msg, size_t* encrypted_msg_len);
+bool AesDecryptForRecieveEx(const unsigned char* msg, size_t msg_len,
+    std::vector<unsigned char>* decrypted_msg, size_t* decrypted_msg_len);
 bool LoadAesKeyFromFile(const std::string& filename, unsigned char* key, size_t keyLength);
 bool SaveAesKeyToFile(const std::string& filename, const unsigned char* key, size_t keyLength);
 EVP_PKEY* GetRsaKey(std::string& pubkey);
@@ -22,7 +26,9 @@ bool ParsingEncryptedKeyData(unsigned int& call_status,
     size_t encrypted_key_data_size);
 void RsaEncryptWithKey(const unsigned char* msg, size_t msg_len,
     unsigned char* encrypted_msg, size_t* encrypted_msg_len);
-void RsaDecryptWithKey(const unsigned char* msg, size_t msg_len,
+void RsaEncryptWithRecievedKey(const unsigned char* msg, size_t msg_len,
+    unsigned char* encrypted_msg, size_t* encrypted_msg_len);
+bool RsaDecryptWithKey(const unsigned char* msg, size_t msg_len,
     unsigned char* decrypted_msg, size_t* decrypted_msg_len);
 bool SetRecievedRsaPublicKey(std::string publickey);
 std::string Base64Decode(const std::string& encoded);

@@ -160,6 +160,7 @@ static DWORD WINAPI WaitCallRequest(LPVOID ivalue)
 static DWORD WINAPI MakeThread(void* data)
 {
     int call_status = 0;
+    unsigned int timeout_count = 0;
     unsigned char decrypted_data[MAX_BUFFER] = { 0 };
     unsigned char encrypted_data[MAX_BUFFER] = { 0 };
     size_t decrypted_data_size = 0;
@@ -173,8 +174,12 @@ static DWORD WINAPI MakeThread(void* data)
     {
         if (receiveBytes > 0)
         {
-            RsaDecryptWithKey((const unsigned char *)messageBuffer, receiveBytes, decrypted_data, &decrypted_data_size);
-            printf("Server TRACE - Receive message (%d bytes)\n", decrypted_data_size);
+            printf("Server TRACE - Receive message (%d bytes)\n", receiveBytes);
+            if (!RsaDecryptWithKey((const unsigned char*)messageBuffer, receiveBytes,
+                decrypted_data, &decrypted_data_size)) {
+                std::cout << "RsaDecryptWithKey fail" << std::endl;
+                break;
+            }
             // TO-DO :
             // Request info to login server
             // Get info and if it was verified, store public key
@@ -212,7 +217,11 @@ static DWORD WINAPI MakeThread(void* data)
         else
         {
             if ((err == EAGAIN) || (err == EWOULDBLOCK) || (receiveBytes == -1)) {
-                std::cout << "Wait recv :" << receiveBytes << std::endl;
+                if (++timeout_count > 20) {
+                    std::cout << "timeout_count" << std::endl;
+                }
+                std::cout << "Wait recv :" << receiveBytes << " : " << timeout_count << std::endl;
+                Sleep(100);
                 continue;
             }
             else {
@@ -245,7 +254,8 @@ int CallRequest(const char* remotehostname, const char* message, unsigned int me
     serverAddr.sin_port = htons(CALL_STATUS_PORT);
     inet_pton(AF_INET, remotehostname, &serverAddr.sin_addr);
 
-    RsaEncryptWithKey((const unsigned char*)message, message_length, encrypted_data, &encryted_data_size);
+    RsaEncryptWithRecievedKey((const unsigned char*)message, message_length,
+        encrypted_data, &encryted_data_size);
 
     if (connect(listenSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR)
     {
