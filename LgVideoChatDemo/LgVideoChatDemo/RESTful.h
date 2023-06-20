@@ -4,6 +4,7 @@
 int LoginFromApp(HWND hDlg);
 int Contacts(HWND hDlg);
 const char* GetContactIp(int index);
+const std::string GetContactKey(int index);
 int SetServer(bool isServer);
 int CheckPeer(const std::wstring& peerHashId, PEER& peer);
 const std::string GetHashId(void);

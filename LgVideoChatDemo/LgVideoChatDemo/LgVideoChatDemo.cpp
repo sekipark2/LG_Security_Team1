@@ -60,6 +60,7 @@ static WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class 
 
 static char RemoteAddress[512]="127.0.0.1";
 static bool Loopback=false;
+static std::string RemotePublicKey;
 
 static FILE* pCout = NULL;
 static HWND hWndMainToolbar;
@@ -533,6 +534,8 @@ static INT_PTR CALLBACK ContactsProc(HWND hDlg, UINT message, WPARAM wParam, LPA
                     int index = (int)SendMessage(hWnd, LB_GETITEMDATA, lbItem, 0);
                     const char* ip = GetContactIp(index);
                     strcpy_s(RemoteAddress, sizeof(RemoteAddress), ip);
+                    RemotePublicKey = GetContactKey(index);
+                    std::cout << "Public Key: " << RemotePublicKey << std::endl;
 
                     hWnd = GetDlgItem(hWndMain, IDC_EDIT_REMOTE);
                     SetWindowTextA(hWnd, RemoteAddress);
@@ -547,41 +550,6 @@ static INT_PTR CALLBACK ContactsProc(HWND hDlg, UINT message, WPARAM wParam, LPA
     return (INT_PTR)FALSE;
 }
 
-static std::vector<std::wstring> missedCalls;
-
-std::wstring makeMissedCall(const std::wstring& firstName, const std::wstring& lastName, const std::wstring& email)
-{
-    SYSTEMTIME time;
-    std::stringstream stream;
-
-    GetLocalTime(&time);
-
-    stream << time.wYear;
-    stream << "/";
-    stream << time.wMonth;
-    stream << "/";
-    stream << time.wDay;
-    stream << " ";
-    stream << time.wHour;
-    stream << ":";
-    stream << time.wMinute;
-    stream << ":";
-    stream << time.wSecond;
-
-    std::string str = stream.str();
-
-    std::wstring missedCall;
-    missedCall.assign(str.begin(), str.end());
-    missedCall += _T(" : ");
-    missedCall += firstName;
-    missedCall += _T(" ");
-    missedCall += lastName;
-    missedCall += _T(" (");
-    missedCall += email;
-    missedCall += _T(")");
-    return missedCall;
-}
-
 // Message handler for missed call box.
 static INT_PTR CALLBACK MissedCallProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -590,14 +558,11 @@ static INT_PTR CALLBACK MissedCallProc(HWND hDlg, UINT message, WPARAM wParam, L
     {
     case WM_INITDIALOG:
         {
-            missedCalls.clear();
-
-            std::wstring missedCall = makeMissedCall(_T("KyungJun"), _T("Shin"), _T("kyungjus@andrew.cmu.edu"));
-
-            HWND hWnd = GetDlgItem(hDlg, IDC_LIST_MISSEDCALL);
-            SendMessage(hWnd, LB_ADDSTRING, 0, (LPARAM)missedCall.c_str());
-
-            missedCalls.push_back(missedCall);
+            for (auto missedCall : missedCalls)
+            {
+                HWND hWnd = GetDlgItem(hDlg, IDC_LIST_MISSEDCALL);
+                SendMessage(hWnd, LB_ADDSTRING, 0, (LPARAM)missedCall.c_str());
+            }
         }
         return (INT_PTR)TRUE;
 
@@ -606,6 +571,7 @@ static INT_PTR CALLBACK MissedCallProc(HWND hDlg, UINT message, WPARAM wParam, L
         {
             if (LOWORD(wParam) == IDOK)
             {
+                missedCalls.clear();
             }
 
             EndDialog(hDlg, LOWORD(wParam));
@@ -662,7 +628,7 @@ HWND CreateSimpleToolbar(HWND hWndParent)
         { MAKELONG(VIEW_NETDISCONNECT, ImageListID), IDM_STOP_SERVER, TBSTATE_INDETERMINATE, buttonStyles, {0}, 0, (INT_PTR)L"Stop Server"},
         { MAKELONG(VIEW_NETCONNECT,    ImageListID), IDM_LOGIN,       TBSTATE_ENABLED,       buttonStyles, {0}, 0, (INT_PTR)L"Login"},
         { MAKELONG(VIEW_NETDISCONNECT, ImageListID), IDM_CONTACTS,    TBSTATE_INDETERMINATE, buttonStyles, {0}, 0, (INT_PTR)L"Contacts"},
-        { MAKELONG(VIEW_NETDISCONNECT, ImageListID), IDM_MISSEDCALL,  TBSTATE_ENABLED, buttonStyles, {0}, 0, (INT_PTR)L"Missed Call"}
+        { MAKELONG(VIEW_NETDISCONNECT, ImageListID), IDM_MISSEDCALL,  TBSTATE_INDETERMINATE, buttonStyles, {0}, 0, (INT_PTR)L"Missed Call"}
     };
 
     // Add buttons.

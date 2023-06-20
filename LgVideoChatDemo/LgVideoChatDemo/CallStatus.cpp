@@ -16,6 +16,7 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <windows.h>
+#include <atlstr.h>
 #include "Crypto.h"
 #include "CallStatus.h"
 #include "RESTful.h"
@@ -31,6 +32,38 @@ static DWORD WINAPI MakeThread(void* data);
 static DWORD WINAPI WaitCallRequest(LPVOID ivalue);
 static bool isServerEnabled = false;
 static bool g_isCalling = false;
+
+std::vector<std::wstring> missedCalls;
+
+static void addMissedCall(const std::wstring& firstName, const std::wstring& lastName, const std::wstring& email)
+{
+    std::wstring missedCall;
+
+    SYSTEMTIME time;
+    GetLocalTime(&time);
+
+    missedCall += std::to_wstring(time.wYear);
+    missedCall += L"/";
+    missedCall += std::to_wstring(time.wMonth);
+    missedCall += L"/";
+    missedCall += std::to_wstring(time.wDay);
+    missedCall += L" ";
+    missedCall += std::to_wstring(time.wHour);
+    missedCall += L":";
+    missedCall += std::to_wstring(time.wMinute);
+    missedCall += L":";
+    missedCall += std::to_wstring(time.wSecond);
+
+    missedCall += L" - ";
+    missedCall += firstName;
+    missedCall += L" ";
+    missedCall += lastName;
+    missedCall += L" (";
+    missedCall += email;
+    missedCall += L")";
+
+    missedCalls.push_back(missedCall);
+}
 
 void StartWaitCallThread(void) {
     isServerEnabled = true;
@@ -151,6 +184,7 @@ static DWORD WINAPI MakeThread(void* data)
             std::string pubkey = "";
             if (CheckPeer(peerHashId, peer) == 0) {
                 std::cout << "peer is valid" << std::endl;
+                addMissedCall(peer.firstName, peer.lastName, peer.email);
                 if (g_isCalling) {
                     pubkey = Base64Decode(utility::conversions::to_utf8string(peer.key));
                     std::cout << "Server is calling" << std::endl;

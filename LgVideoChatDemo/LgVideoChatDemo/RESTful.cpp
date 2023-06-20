@@ -104,6 +104,7 @@ typedef struct
 {
     utility::string_t name;
     utility::string_t ip;
+    utility::string_t key;
 } CONTACT;
 
 static std::vector<CONTACT> contacts;
@@ -170,6 +171,7 @@ int Contacts(HWND hDlg)
         contact.name = data[U("first_name")].as_string() + U(" ") + data[U("last_name")].as_string()
             + U(" (") + data[U("email")].as_string() + U(")");
         contact.ip = data[U("ip_address")].as_string();
+        contact.key = data[U("rsa_public_key")].as_string();
 
         int pos = SendMessage(hWnd, LB_ADDSTRING, 0, (LPARAM)contact.name.c_str());
         SendMessage(hWnd, LB_SETITEMDATA, pos, (LPARAM)contacts.size());
@@ -185,6 +187,11 @@ const char* GetContactIp(int index)
     const WCHAR* ip = contacts.at(index).ip.c_str();
     CStringA cstring(ip);
     return cstring.GetBuffer();
+}
+
+const std::string GetContactKey(int index)
+{
+    return utility::conversions::to_utf8string(contacts.at(index).key);
 }
 
 int SetServer(bool isServer)
