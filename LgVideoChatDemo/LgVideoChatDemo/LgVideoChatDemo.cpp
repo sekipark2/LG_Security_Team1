@@ -676,7 +676,7 @@ static LRESULT OnCreate(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
     CreateWindowExA(WS_EX_CLIENTEDGE,
         "EDIT", RemoteAddress,
-        WS_CHILD | WS_VISIBLE,
+        WS_CHILD | WS_VISIBLE | WS_DISABLED,
         130, 50, 120, 20,
         hWnd,
         (HMENU)IDC_EDIT_REMOTE,
