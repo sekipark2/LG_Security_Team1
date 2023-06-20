@@ -265,7 +265,7 @@ static DWORD WINAPI ThreadVideoClient(LPVOID ivalue)
                                    Mode = ImageSize;
                                    InputBytesNeeded = sizeof(unsigned int);
                                    InputBufferWithOffset = InputBuffer;
-                                   if (!AesDecryptForRecieveEx((const unsigned char*)InputBuffer, SizeofImage,
+                                   if (!AesDecryptForRecieve((const unsigned char*)InputBuffer, SizeofImage,
                                        &decryptedRecvbuff, &decrypted_size)) {
                                        std::cout << "Client decryption failed";
                                    }
@@ -322,7 +322,7 @@ static DWORD WINAPI ThreadVideoClient(LPVOID ivalue)
          {
              std::cout << "Camera Frame Empty" << std::endl;
          }
-         if (!AesEncryptForSendEx(sendbuff.data(), sendbuff.size(),
+         if (!AesEncryptForSend(sendbuff.data(), sendbuff.size(),
              &encryptedSendbuff, (size_t*)&encyprted_size))
          {
              std::cout << "Client encryption failed" << std::endl;
@@ -355,6 +355,7 @@ static DWORD WINAPI ThreadVideoClient(LPVOID ivalue)
     VideoClientCleanup();
     std::cout << "============ Video Client Exiting =============" << std::endl;
     SetIsCalling(false);
+    ReinitializeAesKey();
     return 0;
 }
 //-----------------------------------------------------------------

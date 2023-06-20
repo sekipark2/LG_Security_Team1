@@ -202,6 +202,7 @@ static DWORD WINAPI MakeThread(void* data)
                     std::cout << "Request call is OK" << std::endl;
                     call_status = 0;
                 }
+                std::cout << "pubkey:" << pubkey << std::endl;
                 GenerateEncryptedKeyData(pubkey, call_status, encrypted_data, &encrypted_data_size);
                 int sendBytes = send(socket, (const char*)encrypted_data, encrypted_data_size, 0);
                 if (sendBytes > 0)
@@ -219,6 +220,7 @@ static DWORD WINAPI MakeThread(void* data)
             if ((err == EAGAIN) || (err == EWOULDBLOCK) || (receiveBytes == -1)) {
                 if (++timeout_count > 20) {
                     std::cout << "timeout_count" << std::endl;
+                    break;
                 }
                 std::cout << "Wait recv :" << receiveBytes << " : " << timeout_count << std::endl;
                 Sleep(100);

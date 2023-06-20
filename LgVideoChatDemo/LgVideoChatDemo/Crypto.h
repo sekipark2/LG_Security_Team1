@@ -33,3 +33,4 @@ bool RsaDecryptWithKey(const unsigned char* msg, size_t msg_len,
 bool SetRecievedRsaPublicKey(std::string publickey);
 std::string Base64Decode(const std::string& encoded);
 std::string Base64Encode(const std::string& encoded);
+void ReinitializeAesKey(void);

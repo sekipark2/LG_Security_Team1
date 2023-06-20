@@ -18,7 +18,7 @@ std::string g_recieved_rsa_pub_key;
 std::string g_rsa_pub_key;
 EVP_PKEY* g_rsa_key;
 unsigned char g_aes_key[AES_KEY_LENGTH];
-unsigned char g_recieved_aes_key[AES_KEY_LENGTH];
+unsigned char g_origin_aes_key[AES_KEY_LENGTH];
 
 bool saveRSAKeyToFile(const std::string& filename, const EVP_PKEY* key,
     const std::string& passphrase, const std::string& pubkey);
@@ -461,31 +461,6 @@ bool AesDecryptForRecieve(const unsigned char* msg, size_t msg_len,
     return true;
 }
 
-bool AesEncryptForSendEx(const unsigned char* msg, size_t msg_len,
-    std::vector<unsigned char>* encrypted_msg, size_t* encrypted_msg_len) {
-    unsigned char iv[IV_SIZE] = { 0 };
-    unsigned char encrypted_data[BUFFER_SIZE] = { 0 };
-    std::vector<unsigned char> result;
-    if (!RAND_bytes(iv, sizeof(iv))) {
-        std::cout << "Error during IV generation" << std::endl;
-    }
-    encrypted_msg->insert(encrypted_msg->end(), iv, iv + sizeof(iv));
-    AesEncrypt(g_recieved_aes_key, sizeof(g_recieved_aes_key), iv, sizeof(iv), msg, msg_len, encrypted_data, encrypted_msg_len);
-    encrypted_msg->insert(encrypted_msg->end(), encrypted_data, encrypted_data + *encrypted_msg_len);
-    *encrypted_msg_len += IV_SIZE;
-    return true;
-}
-
-bool AesDecryptForRecieveEx(const unsigned char* msg, size_t msg_len,
-    std::vector<unsigned char>* decrypted_msg, size_t* decrypted_msg_len) {
-    unsigned char decrypted_data[BUFFER_SIZE] = { 0 };
-    std::vector<unsigned char> iv(msg, msg + IV_SIZE);
-    AesDecrypt(g_recieved_aes_key, sizeof(g_recieved_aes_key), iv.data(), iv.size(),
-        msg + IV_SIZE, msg_len - IV_SIZE, decrypted_data, decrypted_msg_len);
-    decrypted_msg->insert(decrypted_msg->end(), decrypted_data, decrypted_data + *decrypted_msg_len);
-    return true;
-}
-
 bool SaveAesKeyToFile(const std::string& filename, const unsigned char* key, size_t keyLength) {
     std::cout << "## SaveAesKeyToFile" << std::endl;
 
@@ -613,6 +588,7 @@ bool SetRecievedRsaPublicKey(std::string publickey)
 {
     if (!publickey.length()) return false;
     g_recieved_rsa_pub_key = publickey;
+    std::cout << "g_recieved_rsa_pub_key:" << g_recieved_rsa_pub_key << std::endl;
     return true;
 }
 
@@ -672,7 +648,8 @@ bool ParsingEncryptedKeyData(unsigned int& call_status,
         std::cout << "ParsingEncryptedKeyData size error:" << decrypt_size - sizeof(unsigned int) << std::endl;
         return false;
     }
-    memcpy(g_recieved_aes_key, decrypt_data, AES_KEY_LENGTH);
+    memcpy(g_origin_aes_key, g_aes_key, AES_KEY_LENGTH);
+    memcpy(g_aes_key, decrypt_data + sizeof(unsigned int), AES_KEY_LENGTH);
     return true;
 }
 
@@ -751,4 +728,8 @@ void RsaEncryptWithRecievedKey(const unsigned char* msg, size_t msg_len,
 
     encryptWithPublicKey(g_recieved_rsa_pub_key, msg, msg_len,
         encrypted_msg, encrypted_msg_len);
+}
+
+void ReinitializeAesKey(void) {
+    memcpy(g_aes_key, g_origin_aes_key, AES_KEY_LENGTH);
 }
