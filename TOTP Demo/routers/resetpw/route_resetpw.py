@@ -1,3 +1,8 @@
+import base64
+import os
+import smtplib
+import ssl
+from email.message import EmailMessage
 from fastapi import APIRouter
 from fastapi import Depends
 from fastapi import Request
@@ -12,6 +17,37 @@ from sqlalchemy.exc import IntegrityError
 
 templates = Jinja2Templates(directory="templates")
 router = APIRouter(include_in_schema=True)
+
+# Define email sender and receiver
+email_sender = 'lgesecuteam1@gmail.com'
+email_password = 'imfzqouxcvsdujru'
+email_receiver = ''
+
+
+def send_password_reset_code(email):
+    code = base64.b32encode(os.urandom(4)).decode('utf-8')
+    # verify_code[email] = code
+    password_reset_code[code] = email
+
+    subject = 'Your password reset code'
+    body = "Your password reset code is %s. " % code
+    body += "Please go to http://127.0.0.1:8000/resetpw to reset your password"
+
+    print(email, subject, body)
+
+    em = EmailMessage()
+    em['From'] = email_sender
+    em['To'] = email
+    em['Subject'] = subject
+    em.set_content(body)
+
+    # Add SSL (layer of security)
+    context = ssl.create_default_context()
+
+    # Log in and send the email
+    with smtplib.SMTP_SSL('smtp.gmail.com', 465, context=context) as smtp:
+        smtp.login(email_sender, email_password)
+        smtp.sendmail(email_sender, email, em.as_string())
 
 
 @router.get("/resetpw/")
@@ -59,12 +95,7 @@ async def forgetpassword(request: Request, db: Session = Depends(get_db)):
                 form.__dict__.get("errors").append("Don't mess with us buddy")
                 return templates.TemplateResponse("resetpw/forgetpw.html", form.__dict__)
 
-            # the code should be a random long uuid4 code
-            password_reset_code['123456'] = form.email
-
-            #
-            # send password_reset_code[form.email]
-            #
+            send_password_reset_code(user.email)
 
             response = {"msg": "please check your email for password reset code"}
             return response
@@ -76,7 +107,7 @@ async def forgetpassword(request: Request, db: Session = Depends(get_db)):
 
 @router.get("/active/{code}")
 async def active_account(code: str, db: Session = Depends(get_db)):
-    if len(code) == 6:
+    if len(code) == 8:
         if code not in account_activation_code:
             return {"msg": "don't mess with us buddy"}
         user_email = account_activation_code[code]

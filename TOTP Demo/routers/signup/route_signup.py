@@ -18,10 +18,11 @@ import ssl
 from email.message import EmailMessage
 import time
 from core.hashing import Hasher
+from core.memo import account_activation_code
 
 # Define email sender and receiver
-email_sender = ''
-email_password = ''
+email_sender = 'lgesecuteam1@gmail.com'
+email_password = 'imfzqouxcvsdujru'
 email_receiver = ''
 
 templates = Jinja2Templates(directory="templates")
@@ -31,11 +32,13 @@ verify_code = {}
 
 
 def send_verify_mail(email):
-    code = base64.b32encode(os.urandom(3)).decode('utf-8')
-    verify_code[email] = code
+    code = base64.b32encode(os.urandom(4)).decode('utf-8')
+    # verify_code[email] = code
+    account_activation_code[code] = email
 
     subject = 'Test for OTP'
-    body = "Your OTP Number is '%s'" % code
+    # body = "Your account activation code is '%s'" % code
+    body = "Please go to http://127.0.0.1/active/%s to activate your account" % code
 
     print(email, subject, body)
 
@@ -85,6 +88,7 @@ async def register(request: Request, db: Session = Depends(get_db)):
             user = create_new_user(user=user, db=db)
             data = 'otpauth://totp/LG-Secu-Team1:{0}?secret={1}&issuer=LG-Secu-Team1' \
             .format(user.email, user.secret)
+            send_verify_mail(user.email)
             url = pyqrcode.create(data)
             stream = BytesIO()
             url.png(stream, scale=3)
