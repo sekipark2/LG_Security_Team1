@@ -155,9 +155,9 @@ int Contacts(HWND hDlg)
         return -1;
     }
 
-    json::array array = json_return[U("msg")].as_array();
+    json::array msg = json_return[U("msg")].as_array();
     HWND hWnd = GetDlgItem(hDlg, IDC_LIST_CONTACTS);
-    for (json::array::iterator it = array.begin(); it != array.end(); ++it)
+    for (json::array::iterator it = msg.begin(); it != msg.end(); ++it)
     {
         json::value data = *it;
 
@@ -232,6 +232,61 @@ int SetServer(bool isServer)
     {
         return -1;
     }
+
+    return 0;
+}
+
+int CheckPeer(const std::wstring& peerHashId, PEER& peer)
+{
+    json::value data;
+    json::value json_return;
+
+    data[U("hash_id")] = json::value::string(hashId);
+    data[U("session")] = json::value::string(sessionId);
+    data[U("peer_hash_id")] = json::value::string(peerHashId, false);
+
+    try
+    {
+        http_client_config config;
+        config.set_validate_certificates(false);
+
+        http_client client(serverUri, config);
+
+        client.request(methods::POST, U("/check_peer"), data.serialize(), U("application/json"))
+            .then([](http_response response)
+        {
+            if (response.status_code() == status_codes::OK)
+            {
+                return response.extract_json();
+            }
+            else
+            {
+                throw std::runtime_error("HTTP request failed");
+            }
+        })
+            .then([&json_return](json::value responseBody)
+        {
+            json_return = responseBody;
+        })
+            .wait();
+    }
+    catch (const std::exception& e)
+    {
+        std::cout << "Error: " << e.what() << std::endl;
+        return -1;
+    }
+
+    int errorCode = json_return[U("errorCode")].as_integer();
+    if (errorCode != 0)
+    {
+        return -1;
+    }
+
+    json::value msg = json_return[U("msg")];
+    peer.firstName = msg[U("first_name")].as_string();
+    peer.lastName = msg[U("last_name")].as_string();
+    peer.email = msg[U("email")].as_string();
+    peer.key = msg[U("rsa_public_key")].as_string();
 
     return 0;
 }

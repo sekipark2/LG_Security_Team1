@@ -18,6 +18,7 @@
 #include <windows.h>
 #include "Crypto.h"
 #include "CallStatus.h"
+#include "RESTful.h"
 
 #define MAX_BUFFER        1024
 #define CALL_STATUS_PORT 10002
@@ -140,13 +141,20 @@ static DWORD WINAPI MakeThread(void* data)
         {
             RsaDecryptWithKey((const unsigned char *)messageBuffer, receiveBytes, decrypted_data, &decrypted_data_size);
             printf("Server TRACE - Receive message : %s (%d bytes)\n", decrypted_data, decrypted_data_size);
-            std::string recieved_hash_id;
-            recieved_hash_id.assign((const char *)decrypted_data, decrypted_data_size);
             // TO-DO :
             // Request info to login server
             // Get info and if it was verified, store public key
             // if g_isCalling is true, store info to vector for missed call
-
+            std::wstring peerHashId(decrypted_data, decrypted_data + decrypted_data_size);
+            PEER peer;
+            if (CheckPeer(peerHashId, peer) == 0) {
+                std::cout << "peer is valid" << std::endl;
+                call_status = 0;
+            }
+            else {
+                std::cout << "peer is invalid" << std::endl;
+                call_status = 1;
+            }
             if (g_isCalling) {
                 std::cout << "Server is calling" << std::endl;
                 call_status = 2;

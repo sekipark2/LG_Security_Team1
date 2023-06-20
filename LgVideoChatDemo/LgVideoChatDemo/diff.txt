@@ -1,0 +1,169 @@
+diff --git a/LgVideoChatDemo/LgVideoChatDemo/CallStatus.cpp b/LgVideoChatDemo/LgVideoChatDemo/CallStatus.cpp
+index d51a2e8..c65491c 100644
+--- a/LgVideoChatDemo/LgVideoChatDemo/CallStatus.cpp
++++ b/LgVideoChatDemo/LgVideoChatDemo/CallStatus.cpp
+@@ -17,6 +17,7 @@
+ #include <windows.h>
+ #include "Crypto.h"
+ #include "CallStatus.h"
++#include "RESTful.h"
+ 
+ #define MAX_BUFFER        1024
+ #define CALL_STATUS_PORT 10002
+@@ -129,7 +130,6 @@ static DWORD WINAPI WaitCallRequest(LPVOID ivalue)
+ static DWORD WINAPI MakeThread(void* data)
+ {
+     int call_status = 0;
+-    std::string token = "0123456789abcdef";
+     unsigned char decrypted_data[MAX_BUFFER] = { 0 };
+     unsigned char encrypted_data[MAX_BUFFER] = { 0 };
+     size_t decrypted_data_size = 0;
+@@ -146,13 +146,15 @@ static DWORD WINAPI MakeThread(void* data)
+             RsaDecryptWithKey((const unsigned char *)messageBuffer, receiveBytes, decrypted_data, &decrypted_data_size);
+             printf("Server TRACE - Receive message : %s (%d bytes)\n", decrypted_data, decrypted_data_size);
+ 
+-            if (strncmp((const char*)decrypted_data, token.c_str(), token.length())) {
+-                std::cout << "token is invalid" << std::endl;
+-                call_status = 1;
++            std::wstring peerHashId(decrypted_data, decrypted_data + decrypted_data_size);
++            PEER peer;
++            if (CheckPeer(peerHashId, peer) == 0) {
++                std::cout << "peer is valid" << std::endl;
++                call_status = 0;
+             }
+             else {
+-                std::cout << "token is valid" << std::endl;
+-                call_status = 0;
++                std::cout << "peer is invalid" << std::endl;
++                call_status = 1;
+             }
+             GenerateEncryptedKeyData(call_status, encrypted_data, &encrypted_data_size);
+ 
+@@ -241,4 +243,4 @@ int CallRequest(const char* remotehostname, const char* message, unsigned int me
+     // 4. 소켓종료
+     closesocket(listenSocket);
+     return callstatus;
+-}
+\ No newline at end of file
++}
+diff --git a/LgVideoChatDemo/LgVideoChatDemo/CallStatus.h b/LgVideoChatDemo/LgVideoChatDemo/CallStatus.h
+index 83e1be7..f938e31 100644
+--- a/LgVideoChatDemo/LgVideoChatDemo/CallStatus.h
++++ b/LgVideoChatDemo/LgVideoChatDemo/CallStatus.h
+@@ -1,5 +1,13 @@
+ #pragma once
+ 
++typedef struct
++{
++    std::wstring firstName;
++    std::wstring lastName;
++    std::wstring email;
++    std::wstring key;
++} PEER;
++
+ int CallRequest(const char* remotehostname, const char* message, unsigned int message_length);
+ void StartWaitCallThread(void);
+-void StopWaitCall(void);
+\ No newline at end of file
++void StopWaitCall(void);
+diff --git a/LgVideoChatDemo/LgVideoChatDemo/LgVideoChatDemo.cpp b/LgVideoChatDemo/LgVideoChatDemo/LgVideoChatDemo.cpp
+index 0fe4a35..c53ed0a 100644
+--- a/LgVideoChatDemo/LgVideoChatDemo/LgVideoChatDemo.cpp
++++ b/LgVideoChatDemo/LgVideoChatDemo/LgVideoChatDemo.cpp
+@@ -776,7 +776,7 @@ static int OnConnect(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+         {
+             if (ConnectToSever(RemoteAddress, VIDEO_PORT))
+             {
+-                std::string hash_key = "0123456789abcdef";
++                std::string hash_key = "WBADUAYWJQRZUCK2";
+                 unsigned int call_status = 1;
+                 if (call_status = CallRequest(RemoteAddress, (const char*)hash_key.data(), hash_key.length())) {
+                     DisplayMessageOkBox("Call is rejected");
+diff --git a/LgVideoChatDemo/LgVideoChatDemo/RESTful.cpp b/LgVideoChatDemo/LgVideoChatDemo/RESTful.cpp
+index 150f530..6aa5556 100644
+--- a/LgVideoChatDemo/LgVideoChatDemo/RESTful.cpp
++++ b/LgVideoChatDemo/LgVideoChatDemo/RESTful.cpp
+@@ -155,9 +155,9 @@ int Contacts(HWND hDlg)
+         return -1;
+     }
+ 
+-    json::array array = json_return[U("msg")].as_array();
++    json::array msg = json_return[U("msg")].as_array();
+     HWND hWnd = GetDlgItem(hDlg, IDC_LIST_CONTACTS);
+-    for (json::array::iterator it = array.begin(); it != array.end(); ++it)
++    for (json::array::iterator it = msg.begin(); it != msg.end(); ++it)
+     {
+         json::value data = *it;
+ 
+@@ -235,3 +235,58 @@ int SetServer(bool isServer)
+ 
+     return 0;
+ }
++
++int CheckPeer(const std::wstring& peerHashId, PEER& peer)
++{
++    json::value data;
++    json::value json_return;
++
++    data[U("hash_id")] = json::value::string(hashId);
++    data[U("session")] = json::value::string(sessionId);
++    data[U("peer_hash_id")] = json::value::string(peerHashId, false);
++
++    try
++    {
++        http_client_config config;
++        config.set_validate_certificates(false);
++
++        http_client client(serverUri, config);
++
++        client.request(methods::POST, U("/check_peer"), data.serialize(), U("application/json"))
++            .then([](http_response response)
++        {
++            if (response.status_code() == status_codes::OK)
++            {
++                return response.extract_json();
++            }
++            else
++            {
++                throw std::runtime_error("HTTP request failed");
++            }
++        })
++            .then([&json_return](json::value responseBody)
++        {
++            json_return = responseBody;
++        })
++            .wait();
++    }
++    catch (const std::exception& e)
++    {
++        std::cout << "Error: " << e.what() << std::endl;
++        return -1;
++    }
++
++    int errorCode = json_return[U("errorCode")].as_integer();
++    if (errorCode != 0)
++    {
++        return -1;
++    }
++
++    json::value msg = json_return[U("msg")];
++    peer.firstName = msg[U("first_name")].as_string();
++    peer.lastName = msg[U("last_name")].as_string();
++    peer.email = msg[U("email")].as_string();
++    peer.key = msg[U("rsa_public_key")].as_string();
++
++    return 0;
++}
+diff --git a/LgVideoChatDemo/LgVideoChatDemo/RESTful.h b/LgVideoChatDemo/LgVideoChatDemo/RESTful.h
+index 17adac6..29720d4 100644
+--- a/LgVideoChatDemo/LgVideoChatDemo/RESTful.h
++++ b/LgVideoChatDemo/LgVideoChatDemo/RESTful.h
+@@ -1,6 +1,8 @@
+ #pragma once
+ #include <windows.h>
++#include "CallStatus.h"
+ int LoginFromApp(HWND hDlg);
+ int Contacts(HWND hDlg);
+ const char* GetContactIp(int index);
+ int SetServer(bool isServer);
++int CheckPeer(const std::wstring& peerHashId, PEER& peer);
