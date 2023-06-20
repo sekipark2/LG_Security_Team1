@@ -12,18 +12,15 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from routers.signup.forms import UserCreateForm
 import pyqrcode
-import png
 import smtplib
 import ssl
 from email.message import EmailMessage
-import time
-from core.hashing import Hasher
 from core.memo import account_activation_code
+from core.config import settings
 
 # Define email sender and receiver
-email_sender = 'lgesecuteam1@gmail.com'
-email_password = 'imfzqouxcvsdujru'
-email_receiver = ''
+email_sender = settings.email_sender
+email_password = settings.email_password
 
 templates = Jinja2Templates(directory="templates")
 router = APIRouter(include_in_schema=True)
@@ -38,7 +35,7 @@ def send_verify_mail(email):
 
     subject = 'Test for OTP'
     # body = "Your account activation code is '%s'" % code
-    body = "Please go to http://127.0.0.1/active/%s to activate your account" % code
+    body = "Please go to %s/active/%s to activate your account" % (settings.server_address, code)
 
     print(email, subject, body)
 

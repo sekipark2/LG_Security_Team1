@@ -14,14 +14,14 @@ from database.session import get_db
 from routers.resetpw.forms import ResetPwForm, ForgetPwForm
 from core.memo import password_reset_code, account_activation_code
 from sqlalchemy.exc import IntegrityError
+from core.config import settings
 
 templates = Jinja2Templates(directory="templates")
 router = APIRouter(include_in_schema=True)
 
 # Define email sender and receiver
-email_sender = 'lgesecuteam1@gmail.com'
-email_password = 'imfzqouxcvsdujru'
-email_receiver = ''
+email_sender = settings.email_sender
+email_password = settings.email_password
 
 
 def send_password_reset_code(email):
@@ -31,7 +31,7 @@ def send_password_reset_code(email):
 
     subject = 'Your password reset code'
     body = "Your password reset code is %s. " % code
-    body += "Please go to http://127.0.0.1:8000/resetpw to reset your password"
+    body += "Please go to %s/resetpw to reset your password" % settings.server_address
 
     print(email, subject, body)
 
