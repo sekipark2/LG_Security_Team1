@@ -19,6 +19,7 @@
 #include "Crypto.h"
 #include "CallStatus.h"
 #include "RESTful.h"
+#include <cpprest/http_client.h>
 
 #define MAX_BUFFER        1024
 #define CALL_STATUS_PORT 10002
@@ -140,36 +141,39 @@ static DWORD WINAPI MakeThread(void* data)
         if (receiveBytes > 0)
         {
             RsaDecryptWithKey((const unsigned char *)messageBuffer, receiveBytes, decrypted_data, &decrypted_data_size);
-            printf("Server TRACE - Receive message : %s (%d bytes)\n", decrypted_data, decrypted_data_size);
+            printf("Server TRACE - Receive message (%d bytes)\n", decrypted_data_size);
             // TO-DO :
             // Request info to login server
             // Get info and if it was verified, store public key
             // if g_isCalling is true, store info to vector for missed call
             std::wstring peerHashId(decrypted_data, decrypted_data + decrypted_data_size);
             PEER peer;
+            std::string pubkey = "";
             if (CheckPeer(peerHashId, peer) == 0) {
                 std::cout << "peer is valid" << std::endl;
-                call_status = 0;
+                if (g_isCalling) {
+                    pubkey = Base64Decode(utility::conversions::to_utf8string(peer.key));
+                    std::cout << "Server is calling" << std::endl;
+                    call_status = 2;
+                }
+                else {
+                    if (!SetRecievedRsaPublicKey(Base64Decode(utility::conversions::to_utf8string(peer.key)))) {
+                        std::cout << "Failed to set pub key" << std::endl;
+                    }
+                    std::cout << "Request call is OK" << std::endl;
+                    call_status = 0;
+                }
+                GenerateEncryptedKeyData(pubkey, call_status, encrypted_data, &encrypted_data_size);
+                int sendBytes = send(socket, (const char*)encrypted_data, encrypted_data_size, 0);
+                if (sendBytes > 0)
+                {
+                    printf("Server TRACE - Send message (%d bytes)\n", sendBytes);
+                }
             }
             else {
-                std::cout << "peer is invalid" << std::endl;
-                call_status = 1;
+                std::cout << "peer(caller ID) is invalid" << std::endl;
             }
-            if (g_isCalling) {
-                std::cout << "Server is calling" << std::endl;
-                call_status = 2;
-            }
-            else {
-                std::cout << "hash_id is valid" << std::endl;
-                call_status = 0;
-            }
-            GenerateEncryptedKeyData(call_status, encrypted_data, &encrypted_data_size);
 
-            int sendBytes = send(socket, (const char *)encrypted_data, encrypted_data_size, 0);
-            if (sendBytes > 0)
-            {
-                printf("Server TRACE - Send message : %s (%d bytes)\n", messageBuffer, sendBytes);
-            }
         }
         else
         {
@@ -227,15 +231,11 @@ int CallRequest(const char* remotehostname, const char* message, unsigned int me
         int sendBytes = send(listenSocket, messageBuffer, bufferLen, 0);
         if (sendBytes > 0)
         {
-            printf("Client TRACE - Send message(%d bytes) : %s \n", sendBytes, messageBuffer);
-
             int receiveBytes = recv(listenSocket, messageBuffer, MAX_BUFFER, 0);
             if (receiveBytes > 0)
             {
-                printf("Client TRACE - Receive message : %s (%d bytes)\n* Enter Message\n->", messageBuffer, receiveBytes);
                 ParsingEncryptedKeyData(callstatus, (unsigned char*)messageBuffer, receiveBytes);
                 std::cout << "Call Status:" << callstatus << std::endl;
-
             }
         }
     }

@@ -20,8 +20,6 @@ EVP_PKEY* g_rsa_key;
 unsigned char g_aes_key[AES_KEY_LENGTH];
 unsigned char g_recieved_aes_key[AES_KEY_LENGTH];
 
-std::string Base64Decode(const std::string& encoded);
-std::string Base64Encode(const std::string& encoded);
 bool saveRSAKeyToFile(const std::string& filename, const EVP_PKEY* key,
     const std::string& passphrase, const std::string& pubkey);
 EVP_PKEY* loadRSAKeyFromFile(const std::string& filename,
@@ -501,8 +499,8 @@ bool LoadAesKeyFromFile(const std::string& filename, unsigned char* key, size_t 
 }
 void CryptoInitialize() {
     std::cout << "================ Crypto Initialize ==============" << std::endl;
-    g_rsa_key = GetRsaKey(g_rsa_pub_key);
-    GetAesKey(g_aes_key, sizeof(g_aes_key), "aes_key.bin");
+    g_rsa_key = GenerateRsaKey(g_rsa_pub_key);
+    GenerateAesKey(g_aes_key, sizeof(g_aes_key));
 
     const unsigned char* msg = (const unsigned char*)"Hello World!!!!!!!!!";
     size_t msg_len = strlen((const char*)msg);
@@ -529,8 +527,7 @@ void CryptoInitialize() {
     unsigned char tempbuf[1000] = { 0 };
     size_t outsizse = 0;
 
-    g_recieved_rsa_pub_key = g_rsa_pub_key;
-    GenerateEncryptedKeyData(callstatus, tempbuf, &outsizse);
+    GenerateEncryptedKeyData(g_rsa_pub_key, callstatus, tempbuf, &outsizse);
     ParsingEncryptedKeyData(callstatus, tempbuf, outsizse);
 }
 
@@ -587,7 +584,8 @@ bool SetRecievedRsaPublicKey(std::string publickey)
     return true;
 }
 
-bool GenerateEncryptedKeyData(const unsigned int call_status,
+bool GenerateEncryptedKeyData(std::string recieved_pub_key,
+                              const unsigned int call_status,
                               unsigned char* encrypted_key_data,
                               size_t* encrypted_key_data_size)
 {
@@ -598,10 +596,15 @@ bool GenerateEncryptedKeyData(const unsigned int call_status,
     std::vector<unsigned char> key_data;
     char* call_status_start = (char*)&call_status;
     char* call_status_end = (char*)&call_status + sizeof(unsigned int);
+    std::string enc_pub_key = recieved_pub_key;
 
     if (!encrypted_key_data) return false;
-    if (!g_recieved_rsa_pub_key.length()) return false;
     if (call_status > 2) return false;
+    if (!enc_pub_key.length()) {
+        if (!g_recieved_rsa_pub_key.length())
+            return false;
+        enc_pub_key = g_recieved_rsa_pub_key;
+    }
 
     key_data.insert(key_data.end(), call_status_start, call_status_end);
 
@@ -612,7 +615,7 @@ bool GenerateEncryptedKeyData(const unsigned int call_status,
         key_data.resize(key_data.size() + AES_KEY_LENGTH, 0);
     }
     std::cout << "key_data length:" << key_data.size() << std::endl;
-    encryptWithPublicKey(g_recieved_rsa_pub_key, (const unsigned char*)key_data.data(),
+    encryptWithPublicKey(enc_pub_key, (const unsigned char*)key_data.data(),
         key_data.size(), encrypted_key_data, encrypted_key_data_size);
     std::cout << "encrypted key_data length:" << *encrypted_key_data_size << std::endl;
     return true;
