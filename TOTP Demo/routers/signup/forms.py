@@ -37,6 +37,10 @@ class UserCreateForm:
             self.errors.append("Please enter valid email")
         if not self.password or len(self.password) < PASSWORD_LENGTH:
             self.errors.append("Password must be >= %d chars" % (PASSWORD_LENGTH))
+        if self.password and re.search(r"\d", self.password) is None:
+            self.errors.append("Password must include one number")
+        if self.password and re.search(r"[ !#$%&'()*+,-./[\\\]^_`{|}~"+r'"]', self.password) is None:
+            self.errors.append("Password must include one symbol number")
         if self.password != self.confirmPassword:
             self.errors.append("Confirm Password does not match")
         if not set(self.password).intersection(set(number)) or not set(self.password).intersection(set(symbol)):

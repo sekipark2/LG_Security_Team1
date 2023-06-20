@@ -29,6 +29,10 @@ class ResetPwForm:
             self.errors.append("Invalid password reset token")
         if not self.password or not len(self.password) >= 10:
             self.errors.append("Password must be > 10 chars")
+        if self.password and re.search(r"\d", self.password) is None:
+            self.errors.append("Password must include one number")
+        if self.password and re.search(r"[ !#$%&'()*+,-./[\\\]^_`{|}~"+r'"]', self.password) is None:
+            self.errors.append("Password must include one symbol number")
         if self.password != self.confirmPassword:
             self.errors.append("Confirm Password does not match")
         if not self.errors:
