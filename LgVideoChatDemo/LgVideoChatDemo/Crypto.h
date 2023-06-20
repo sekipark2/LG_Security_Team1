@@ -19,3 +19,7 @@ bool GenerateEncryptedKeyData(const unsigned int call_status,
 bool ParsingEncryptedKeyData(unsigned int& call_status,
     unsigned char* encrypted_key_data,
     size_t encrypted_key_data_size);
+void RsaEncryptWithKey(const unsigned char* msg, size_t msg_len,
+    unsigned char* encrypted_msg, size_t* encrypted_msg_len);
+void RsaDecryptWithKey(const unsigned char* msg, size_t msg_len,
+    unsigned char* decrypted_msg, size_t* decrypted_msg_len);

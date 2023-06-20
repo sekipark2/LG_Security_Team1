@@ -19,6 +19,7 @@
 #include "litevad.h"
 #include "RESTful.h"
 #include "Crypto.h"
+#include "CallStatus.h"
 
 #pragma comment(lib,"comctl32.lib")
 #ifdef _DEBUG
@@ -730,6 +731,12 @@ static int OnConnect(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         {
             if (ConnectToSever(RemoteAddress, VIDEO_PORT))
             {
+                std::string hash_key = "0123456789abcdef";
+                unsigned int call_status = 1;
+                if (call_status = CallRequest(RemoteAddress, (const char*)hash_key.data(), hash_key.length())) {
+                    DisplayMessageOkBox("Call is rejected");
+                    return 0;
+                }
                 std::cout << "Connected to Server" << std::endl;
                 StartVideoClient();
                 std::cout << "Video Client Started.." << std::endl;

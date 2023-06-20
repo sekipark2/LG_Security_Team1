@@ -682,3 +682,23 @@ bool GetEncodedPublicKey(std::string& encoded_pub_key) {
     encoded_pub_key = Base64Encode(g_rsa_pub_key);
     return true;
 }
+
+void RsaEncryptWithKey(const unsigned char* msg, size_t msg_len,
+    unsigned char* encrypted_msg, size_t* encrypted_msg_len) {
+    if (g_rsa_pub_key.size() == 0) {
+        std::cout << "rsa public key doesn't generated" << std::endl;
+    }
+
+    encryptWithPublicKey(g_rsa_pub_key, msg, msg_len,
+        encrypted_msg, encrypted_msg_len);
+}
+
+void RsaDecryptWithKey(const unsigned char* msg, size_t msg_len,
+    unsigned char* decrypted_msg, size_t* decrypted_msg_len) {
+
+    if (g_rsa_key == 0) {
+        std::cout << "rsa priv key doesn't generated" << std::endl;
+    }
+    RsaDecrypt(g_rsa_key, msg, msg_len,
+        decrypted_msg, decrypted_msg_len);
+}
