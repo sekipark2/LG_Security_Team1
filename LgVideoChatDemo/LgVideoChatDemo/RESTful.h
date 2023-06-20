@@ -3,3 +3,4 @@
 int LoginFromApp(HWND hDlg);
 int Contacts(HWND hDlg);
 const char* GetContactIp(int index);
+int SetServer(bool isServer);

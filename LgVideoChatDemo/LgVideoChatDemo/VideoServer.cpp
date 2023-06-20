@@ -14,6 +14,7 @@
 #include "Camera.h"
 #include "Crypto.h"
 #include "CallStatus.h"
+#include "RESTful.h"
 
 static  std::vector<uchar> sendbuff;//buffer for coding
 static  std::vector<uchar> encryptedSendbuff;//buffer for Encryption
@@ -44,6 +45,7 @@ static void CleanUpClosedConnection(void);
 
 bool StartVideoServer(bool &Loopback)
 {
+  SetServer(true);
   if (hThreadVideoServer == INVALID_HANDLE_VALUE)
     {
         hThreadVideoServer = CreateThread(NULL, 0, ThreadVideoServer, &Loopback, 0, &ThreadVideoServerID);
@@ -61,6 +63,7 @@ bool StopVideoServer(void)
     }
     StopWaitCall();
     VideoServerCleanup();
+    SetServer(false);
     return true;
 }
 bool IsVideoServerRunning(void)
@@ -216,6 +219,26 @@ static DWORD WINAPI ThreadVideoServer(LPVOID ivalue)
                          {
                              std::cout << "Accepted Connection " << RemoteIp << std::endl;
                          }
+/*
+                         int msgboxID = MessageBoxA(
+                             NULL,
+                             "Test",
+                             "Information",
+                             MB_OK
+                         );
+                         switch (msgboxID)
+                         {
+                             case IDCANCEL:
+                                 std::cout << "MessageBox cancel" << std::endl;
+                                 // TODO: add code
+                                 break;
+                             case IDOK:
+                                 std::cout << "MessageBox ok" << std::endl;
+                                 // TODO: add code
+                                 break;
+                         }
+                         std::cout << "MessageBox end" << std::endl;
+*/
                          if (!Loopback)
                          {
                              if ((strcmp(RemoteIp,LocalIpAddress) == 0) ||
