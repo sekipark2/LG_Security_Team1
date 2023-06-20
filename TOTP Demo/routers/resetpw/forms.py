@@ -25,7 +25,7 @@ class ResetPwForm:
     async def is_valid(self):
         # if not re.fullmatch(regex, self.email):
         #     self.errors.append("Please enter valid email")
-        if not self.code or not len(self.code) >= 6:
+        if not self.code or not len(self.code) == 8:
             self.errors.append("Invalid password reset token")
         if not self.password or not len(self.password) >= 10:
             self.errors.append("Password must be > 10 chars")
