@@ -13,6 +13,7 @@
 #include "TcpSendRecv.h"
 #include "DisplayImage.h"
 #include "Crypto.h"
+#include "CallStatus.h"
 
 
 enum InputMode { ImageSize, Image };
@@ -352,7 +353,8 @@ static DWORD WINAPI ThreadVideoClient(LPVOID ivalue)
         InputBuffer = nullptr;
     }
     VideoClientCleanup();
-    std::cout << "Video Client Exiting" << std::endl;
+    std::cout << "============ Video Client Exiting =============" << std::endl;
+    SetIsCalling(false);
     return 0;
 }
 //-----------------------------------------------------------------

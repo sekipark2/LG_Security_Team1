@@ -12,6 +12,7 @@
 */
 
 #include <iostream>
+#include <string>
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <windows.h>
@@ -27,6 +28,7 @@ static HANDLE hThreadCallStatus = INVALID_HANDLE_VALUE;
 static DWORD WINAPI MakeThread(void* data);
 static DWORD WINAPI WaitCallRequest(LPVOID ivalue);
 static bool isServerEnabled = false;
+static bool g_isCalling = false;
 
 void StartWaitCallThread(void) {
     isServerEnabled = true;
@@ -48,7 +50,7 @@ void StopWaitCall(void) {
 static DWORD WINAPI WaitCallRequest(LPVOID ivalue)
 {
     std::cout << "===== Waiting CallRequest Start ======" << std::endl;
-    // 1. 소켓생성    
+    // Create socket   
     SOCKET listenSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (listenSocket == INVALID_SOCKET)
     {
@@ -56,53 +58,48 @@ static DWORD WINAPI WaitCallRequest(LPVOID ivalue)
         return 1;
     }
 
-    // 서버정보 객체설정
+    // Set server
     SOCKADDR_IN serverAddr;
     memset(&serverAddr, 0, sizeof(SOCKADDR_IN));
     serverAddr.sin_family = PF_INET;
     serverAddr.sin_port = htons(CALL_STATUS_PORT);
     serverAddr.sin_addr.S_un.S_addr = htonl(INADDR_ANY);
 
-    // 2. 소켓설정
+    // Set socket
     if (bind(listenSocket, (struct sockaddr*)&serverAddr, sizeof(SOCKADDR_IN)) == SOCKET_ERROR)
     {
         printf("Error - Fail bind\n");
-        // 6. 소켓종료
+        // close socket
         closesocket(listenSocket);
         return 1;
     }
 
-    // 3. 수신대기열생성
+    // Set recieve
     if (listen(listenSocket, 5) == SOCKET_ERROR)
     {
         printf("Error - Fail listen\n");
-        // 6. 소켓종료
+        // close socket
         closesocket(listenSocket);
         return 1;
     }
 
-    // 연결대기 정보변수 선언
     SOCKADDR_IN clientAddr;
     int addrLen = sizeof(SOCKADDR_IN);
     memset(&clientAddr, 0, addrLen);
     SOCKET clientSocket;
 
-    // 서버 소켓을 non-blocking 모드로 설정
+    // Set non-blocking
     unsigned long mode = 1;
     if (ioctlsocket(listenSocket, FIONBIO, &mode) != 0) {
-        // 에러 처리
         closesocket(listenSocket);
         WSACleanup();
         return 1;
     }
 
-    // thread Handle 선언
     HANDLE hThread;
 
     while (1)
     {
-        // 4. 연결대기
-        //std::cout << "WaitCallRequest6" << std::endl;
         clientSocket = accept(listenSocket, (struct sockaddr*)&clientAddr, &addrLen);
 
         if (clientSocket == -1) {
@@ -110,6 +107,7 @@ static DWORD WINAPI WaitCallRequest(LPVOID ivalue)
                 std::cout << "close waiting " << std::endl;
                 break;
             }
+            Sleep(100);
         }
         else {
             std::cout << "Client request to connect" << std::endl;
@@ -117,10 +115,8 @@ static DWORD WINAPI WaitCallRequest(LPVOID ivalue)
             CloseHandle(hThread);
             std::cout << "Connenction done" << std::endl;
         }
-
     }
 
-    // 6-2. 리슨 소켓종료
     closesocket(listenSocket);
     std::cout << "===== Waiting CallRequest End ======" << std::endl;
     return 0;
@@ -129,13 +125,12 @@ static DWORD WINAPI WaitCallRequest(LPVOID ivalue)
 static DWORD WINAPI MakeThread(void* data)
 {
     int call_status = 0;
-    std::string token = "0123456789abcdef";
     unsigned char decrypted_data[MAX_BUFFER] = { 0 };
     unsigned char encrypted_data[MAX_BUFFER] = { 0 };
     size_t decrypted_data_size = 0;
     size_t encrypted_data_size = 0;
     SOCKET socket = (SOCKET)data;
-    // 5-1. 데이터 읽기
+
     char messageBuffer[MAX_BUFFER];
     int receiveBytes;
     int err = errno;
@@ -145,19 +140,23 @@ static DWORD WINAPI MakeThread(void* data)
         {
             RsaDecryptWithKey((const unsigned char *)messageBuffer, receiveBytes, decrypted_data, &decrypted_data_size);
             printf("Server TRACE - Receive message : %s (%d bytes)\n", decrypted_data, decrypted_data_size);
+            std::string recieved_hash_id;
+            recieved_hash_id.assign((const char *)decrypted_data, decrypted_data_size);
+            // TO-DO :
+            // Request info to login server
+            // Get info and if it was verified, store public key
+            // if g_isCalling is true, store info to vector for missed call
 
-            if (strncmp((const char*)decrypted_data, token.c_str(), token.length())) {
-                std::cout << "token is invalid" << std::endl;
-                call_status = 1;
+            if (g_isCalling) {
+                std::cout << "Server is calling" << std::endl;
+                call_status = 2;
             }
             else {
-                std::cout << "token is valid" << std::endl;
+                std::cout << "hash_id is valid" << std::endl;
                 call_status = 0;
             }
             GenerateEncryptedKeyData(call_status, encrypted_data, &encrypted_data_size);
 
-            // 5-2. 데이터 쓰기
-            Sleep(1000);
             int sendBytes = send(socket, (const char *)encrypted_data, encrypted_data_size, 0);
             if (sendBytes > 0)
             {
@@ -186,7 +185,7 @@ int CallRequest(const char* remotehostname, const char* message, unsigned int me
     unsigned int callstatus = 1;
     unsigned char encrypted_data[1000] = { 0 };
     size_t encryted_data_size = 0;
-    // 1. 소켓생성
+
     SOCKET listenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (listenSocket == INVALID_SOCKET)
     {
@@ -194,26 +193,21 @@ int CallRequest(const char* remotehostname, const char* message, unsigned int me
         return 1;
     }
 
-    // 서버정보 객체설정
     SOCKADDR_IN serverAddr;
     memset(&serverAddr, 0, sizeof(SOCKADDR_IN));
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_port = htons(CALL_STATUS_PORT);
     inet_pton(AF_INET, remotehostname, &serverAddr.sin_addr);
 
-    // encryption befor connect
     RsaEncryptWithKey((const unsigned char*)message, message_length, encrypted_data, &encryted_data_size);
 
-    // 2. 연결요청
     if (connect(listenSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR)
     {
         printf("Error - Fail to connect\n");
-        // 4. 소켓종료
         closesocket(listenSocket);
         return 1;
     }
     {
-        // 메시지 입력
         char* messageBuffer;
         unsigned int bufferLen;
 
@@ -221,12 +215,12 @@ int CallRequest(const char* remotehostname, const char* message, unsigned int me
         bufferLen = encryted_data_size;
         printf("Clinet message:%s, len:%u\n", message, message_length);
 
-        // 3-1. 데이터 쓰기
+
         int sendBytes = send(listenSocket, messageBuffer, bufferLen, 0);
         if (sendBytes > 0)
         {
             printf("Client TRACE - Send message(%d bytes) : %s \n", sendBytes, messageBuffer);
-            // 3-2. 데이터 읽기
+
             int receiveBytes = recv(listenSocket, messageBuffer, MAX_BUFFER, 0);
             if (receiveBytes > 0)
             {
@@ -238,7 +232,17 @@ int CallRequest(const char* remotehostname, const char* message, unsigned int me
         }
     }
 
-    // 4. 소켓종료
     closesocket(listenSocket);
     return callstatus;
+}
+
+void SetIsCalling(bool isCalling)
+{
+    g_isCalling = isCalling;
+    if (g_isCalling) {
+        std::cout << "Set calling enable" << std::endl;
+    }
+    else {
+        std::cout << "Set calling disable" << std::endl;
+    }
 }

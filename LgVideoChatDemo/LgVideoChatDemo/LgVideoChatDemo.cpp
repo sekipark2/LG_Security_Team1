@@ -774,19 +774,26 @@ static int OnConnect(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
         if (OpenCamera())
         {
+            std::string hash_id = GetHashId();
+            unsigned int call_status = 1;
+            if (!hash_id.length()) {
+                std::cout << "Invalid hash_id" << std::endl;
+                return 0;
+            }
+            if (call_status = CallRequest(RemoteAddress, (const char*)hash_id.data(), hash_id.length())) {
+                if (call_status == 1)  DisplayMessageOkBox("Your call is rejected by authentication");
+                if (call_status == 2)  DisplayMessageOkBox("Your call is rejected by calling");
+                return 0;
+            }
             if (ConnectToSever(RemoteAddress, VIDEO_PORT))
             {
-                std::string hash_key = "0123456789abcdef";
-                unsigned int call_status = 1;
-                if (call_status = CallRequest(RemoteAddress, (const char*)hash_key.data(), hash_key.length())) {
-                    DisplayMessageOkBox("Call is rejected");
-                    return 0;
-                }
                 std::cout << "Connected to Server" << std::endl;
                 StartVideoClient();
                 std::cout << "Video Client Started.." << std::endl;
                 VoipVoiceStart(RemoteAddress, VOIP_LOCAL_PORT, VOIP_REMOTE_PORT, VoipAttr);
                 std::cout << "Voip Voice Started.." << std::endl;
+                std::cout << "================ Client Connected ==============" << std::endl;
+                SetIsCalling(true);
                 return 1;
             }
             else
@@ -813,6 +820,7 @@ static int OnDisconnect(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         CloseCamera();
         std::cout << "Video Client Stopped" << std::endl;
     }
+    SetIsCalling(false);
     return 1;
 }
 

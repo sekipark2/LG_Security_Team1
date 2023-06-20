@@ -235,3 +235,8 @@ int SetServer(bool isServer)
 
     return 0;
 }
+
+const std::string GetHashId(void)
+{
+    return utility::conversions::to_utf8string(hashId);
+}

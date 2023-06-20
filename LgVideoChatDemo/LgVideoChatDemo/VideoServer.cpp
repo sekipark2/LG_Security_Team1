@@ -254,7 +254,11 @@ static DWORD WINAPI ThreadVideoServer(LPVOID ivalue)
                          hAcceptEvent = WSACreateEvent();
                          WSAEventSelect(Accept, hAcceptEvent, FD_READ |FD_WRITE |FD_CLOSE);
                          ghEvents[2] = hAcceptEvent;
-                         if ((Loopback) || (LoopbackOverRide))  NumEvents = 3;
+                         if ((Loopback) || (LoopbackOverRide)) {
+                             std::cout << "================ Server Connectd (Loopback) ==============" << std::endl;
+                             //SetIsCalling(true);
+                             NumEvents = 3;
+                         }
                          else
                          {
                              liDueTime.QuadPart = 0LL;
@@ -281,6 +285,8 @@ static DWORD WINAPI ThreadVideoServer(LPVOID ivalue)
                              }
                              ghEvents[3] = hTimer;
                              NumEvents = 4;
+                             SetIsCalling(true);
+                             std::cout << "================ Server Connectd ==============" << std::endl;
                          }
                      }
                      else
@@ -512,6 +518,8 @@ static void CleanUpClosedConnection(void)
         CloseCamera();
         VoipVoiceStop();
     }
+    std::cout << "================ Server Disconnectd ==============" << std::endl;
+    SetIsCalling(false);
     Mode = ImageSize;
     InputBytesNeeded = sizeof(unsigned int);
     InputBufferWithOffset = InputBuffer;
