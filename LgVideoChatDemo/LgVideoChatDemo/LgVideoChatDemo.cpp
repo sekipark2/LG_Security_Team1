@@ -554,6 +554,8 @@ static INT_PTR CALLBACK ContactsProc(HWND hDlg, UINT message, WPARAM wParam, LPA
     return (INT_PTR)FALSE;
 }
 
+static unsigned int missedCallCount;
+
 // Message handler for missed call box.
 static INT_PTR CALLBACK MissedCallProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -562,10 +564,12 @@ static INT_PTR CALLBACK MissedCallProc(HWND hDlg, UINT message, WPARAM wParam, L
     {
     case WM_INITDIALOG:
         {
+            missedCallCount = 0;
             for (auto missedCall : missedCalls)
             {
                 HWND hWnd = GetDlgItem(hDlg, IDC_LIST_MISSEDCALL);
                 SendMessage(hWnd, LB_ADDSTRING, 0, (LPARAM)missedCall.c_str());
+                missedCallCount++;
             }
         }
         return (INT_PTR)TRUE;
@@ -575,7 +579,7 @@ static INT_PTR CALLBACK MissedCallProc(HWND hDlg, UINT message, WPARAM wParam, L
         {
             if (LOWORD(wParam) == IDOK)
             {
-                missedCalls.clear();
+                missedCalls.erase(missedCalls.begin(), missedCalls.begin() + missedCallCount);
             }
 
             EndDialog(hDlg, LOWORD(wParam));
