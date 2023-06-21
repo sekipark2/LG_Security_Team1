@@ -26,9 +26,6 @@
 #define MAX_BUFFER        1024
 #define CALL_STATUS_PORT 10002
 
-#define CALL_STATUS_OK 0
-#define CALL_STATUS_REJECT 1
-#define CALL_STATUS_MISSING 2
 static DWORD ThreadCallStatusID;
 static HANDLE hThreadCallStatus = INVALID_HANDLE_VALUE;
 
@@ -188,28 +185,33 @@ static DWORD WINAPI MakeThread(void* data)
             // Request info to login server
             // Get info and if it was verified, store public key
             // if g_isCalling is true, store info to vector for missed call
-            int ans = checkReceivedCall();
-            if (ans == 2) { // 1: Answer call 2: Reject call
-                std::cout << "Request call is OK" << std::endl;
-                call_status = CALL_STATUS_REJECT;
-            }
+
             std::wstring peerHashId(decrypted_data, decrypted_data + decrypted_data_size);
             PEER peer;
             std::string pubkey = "";
             if (CheckPeer(peerHashId, peer) == 0) {
                 std::cout << "peer is valid" << std::endl;
-                addMissedCall(peer.firstName, peer.lastName, peer.email);
                 if (g_isCalling) {
+                    addMissedCall(peer.firstName, peer.lastName, peer.email);
                     pubkey = Base64Decode(utility::conversions::to_utf8string(peer.key));
                     std::cout << "Server is calling" << std::endl;
                     call_status = CALL_STATUS_MISSING;
                 }
                 else {
+
+                    int ans = checkReceivedCall();
+                    if (ans == CALL_STATUS_REJECT) { // 1: Answer call 2: Reject call
+                        std::cout << "Request call is OK" << std::endl;
+                        call_status = CALL_STATUS_REJECT;
+                    }
+                    else {
+                        std::cout << "Request call is OK" << std::endl;
+                        call_status = CALL_STATUS_OK;
+                    }
+
                     if (!SetRecievedRsaPublicKey(Base64Decode(utility::conversions::to_utf8string(peer.key)))) {
                         std::cout << "Failed to set pub key" << std::endl;
                     }
-                    std::cout << "Request call is OK" << std::endl;
-                    call_status = CALL_STATUS_OK;
                 }
                 std::cout << "pubkey:" << pubkey << std::endl;
                 GenerateEncryptedKeyData(pubkey, call_status, encrypted_data, &encrypted_data_size);

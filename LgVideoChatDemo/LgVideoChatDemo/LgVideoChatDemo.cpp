@@ -604,7 +604,7 @@ static INT_PTR CALLBACK ReceiveCallProc(HWND hDlg, UINT message, WPARAM wParam, 
             {
                 // OK 버튼 클릭 이벤트 처리
                 //MessageBox(hDlg, L"OK button clicked!", L"Button Click", MB_OK | MB_ICONINFORMATION);
-                call_response = 1;
+                call_response = CALL_STATUS_OK;
                 std::cout << "Call answer ok " << call_response << std::endl;
                 //g_condition_var.notify_one();
                 EndDialog(hDlg, IDCANCEL);
@@ -614,7 +614,7 @@ static INT_PTR CALLBACK ReceiveCallProc(HWND hDlg, UINT message, WPARAM wParam, 
             {
                 // NOK 버튼 클릭 이벤트 처리
                 //MessageBox(hDlg, L"NOK button clicked!", L"Button Click", MB_OK | MB_ICONINFORMATION);
-                call_response = 2;
+                call_response = CALL_STATUS_REJECT;
                 std::cout << "Call Reject " << call_response << std::endl;
                 EndDialog(hDlg, IDCANCEL);
                 return (INT_PTR)TRUE;

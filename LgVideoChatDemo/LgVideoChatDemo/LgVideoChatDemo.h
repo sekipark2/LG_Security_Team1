@@ -13,6 +13,10 @@
 #define VOIP_REMOTE_PORT 10001
 #define VIDEO_FRAME_DELAY 100
 
+#define CALL_STATUS_OK 0
+#define CALL_STATUS_REJECT 1
+#define CALL_STATUS_MISSING 2
+
 extern HWND hWndMain;
 extern TVoipAttr VoipAttr;
 extern char LocalIpAddress[512];
