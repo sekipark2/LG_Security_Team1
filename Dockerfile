@@ -6,4 +6,4 @@ RUN pip install --no-cache-dir --upgrade -r /app/requirements.txt
 
 WORKDIR /app
 
-CMD ["uvicorn", "main:app", "--reload", "--ssl-keyfile", "server.key", "--ssl-certfile", "server.cert", "--host", "0.0.0.0"]
+CMD ["uvicorn", "main:app", "--ssl-keyfile", "server.key", "--ssl-certfile", "server.cert", "--host", "0.0.0.0"]
