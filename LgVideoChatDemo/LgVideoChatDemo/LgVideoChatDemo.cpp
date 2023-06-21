@@ -582,6 +582,8 @@ static INT_PTR CALLBACK MissedCallProc(HWND hDlg, UINT message, WPARAM wParam, L
             return (INT_PTR)TRUE;
         }
         break;
+    }
+}
 // Message handler for missed call box.
 static INT_PTR CALLBACK ReceiveCallProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
