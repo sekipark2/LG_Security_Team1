@@ -76,6 +76,7 @@ static INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 static INT_PTR CALLBACK    LoginProc(HWND, UINT, WPARAM, LPARAM);
 static INT_PTR CALLBACK    ContactsProc(HWND, UINT, WPARAM, LPARAM);
 static INT_PTR CALLBACK    MissedCallProc(HWND, UINT, WPARAM, LPARAM);
+static INT_PTR CALLBACK    ReceiveCallProc(HWND, UINT, WPARAM, LPARAM);
 
 
 static LRESULT OnCreate(HWND, UINT, WPARAM, LPARAM);
@@ -89,6 +90,7 @@ static void SetHostAddr(void);
 static void SetStdOutToNewConsole(void);
 static void DisplayMessageOkBox(const char* Msg);
 static bool OnlyOneInstance(void);
+unsigned int call_response;
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -580,6 +582,50 @@ static INT_PTR CALLBACK MissedCallProc(HWND hDlg, UINT message, WPARAM wParam, L
             return (INT_PTR)TRUE;
         }
         break;
+// Message handler for missed call box.
+static INT_PTR CALLBACK ReceiveCallProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    UNREFERENCED_PARAMETER(lParam);
+    switch (message)
+    {
+        case WM_INITDIALOG:
+        {
+        std::cout << "@@@ init dialog!! " << std::endl;
+            HWND hWnd = GetDlgItem(hDlg, IDC_LIST_MISSEDCALL);
+        }
+        return (INT_PTR)TRUE;
+
+        case WM_COMMAND:
+        {
+            WORD wButtonId = LOWORD(wParam);
+            if (wButtonId == IDOK)
+            {
+                // OK 버튼 클릭 이벤트 처리
+                //MessageBox(hDlg, L"OK button clicked!", L"Button Click", MB_OK | MB_ICONINFORMATION);
+                call_response = 1;
+                std::cout << "Call answer ok " << call_response << std::endl;
+                //g_condition_var.notify_one();
+                EndDialog(hDlg, IDCANCEL);
+                return (INT_PTR)TRUE;
+            }
+            else if (wButtonId == IDCANCEL)
+            {
+                // NOK 버튼 클릭 이벤트 처리
+                //MessageBox(hDlg, L"NOK button clicked!", L"Button Click", MB_OK | MB_ICONINFORMATION);
+                call_response = 2;
+                std::cout << "Call Reject " << call_response << std::endl;
+                EndDialog(hDlg, IDCANCEL);
+                return (INT_PTR)TRUE;
+            }
+        }
+        
+        break;
+    
+        case WM_CLOSE:
+        // 닫기 버튼 클릭 이벤트 처리
+        EndDialog(hDlg, IDCANCEL);
+        std::cout << "@@@ answer close!! " << std::endl;
+        return TRUE;
     }
     return (INT_PTR)FALSE;
 }
@@ -870,6 +916,12 @@ static bool OnlyOneInstance(void)
         return false; 
     }
     return true;
+}
+
+int checkReceivedCall(void) {
+    DialogBox(hInst, MAKEINTRESOURCE(IDD_RECEIVECALLBOX), NULL, ReceiveCallProc);
+    std::cout << "!!! get answer:" << call_response << std::endl;
+    return call_response;
 }
 //-----------------------------------------------------------------
 // END of File

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "resource.h"
+#include "VoipVoice.h"
 
 #define WM_CLIENT_LOST         WM_USER+1
 #define WM_REMOTE_CONNECT      WM_USER+2
@@ -16,6 +17,7 @@ extern HWND hWndMain;
 extern TVoipAttr VoipAttr;
 extern char LocalIpAddress[512];
 
+int checkReceivedCall(void);
 //-----------------------------------------------------------------
 // END of File
 //-----------------------------------------------------------------

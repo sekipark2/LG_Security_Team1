@@ -14,6 +14,7 @@
 #define IDD_LOGINBOX                    110
 #define IDD_CONTACTSBOX                 111
 #define IDD_MISSEDCALLBOX               112
+#define IDD_RECEIVECALLBOX              113
 #define IDR_MAINFRAME                   128
 #define IDC_EDIT_URI                    1000
 #define IDC_EDIT_EMAIL                  1001
