@@ -24,6 +24,7 @@ router = APIRouter(include_in_schema=True)
 rest_session = {}
 web_session = {}
 contact_list = {}
+fail_timer = {}
 
 class Contact:
     email: str
@@ -57,6 +58,7 @@ class Contact:
 def login(request: Request):
     return templates.TemplateResponse("login/login.html", {"request": request})
 
+WAIT_TIME = round(60 * 60 * 1000)
 
 @router.post("/login/")
 async def login(request: Request, db: Session = Depends(get_db)):
@@ -68,8 +70,17 @@ async def login(request: Request, db: Session = Depends(get_db)):
             print(user)
             if user:
                 print('fail_counter', user.fail_counter)
+                if user.hash_id in fail_timer.keys():
+                    time_diff = round(time.time() * 1000) - fail_timer[user.hash_id]
+                    if time_diff > WAIT_TIME:  # one hour
+                        fail_timer.pop(user.hash_id)
+                        user.fail_counter = 0
+                        db.commit()
                 if user.fail_counter >= 3:
-                    form.__dict__.get("errors").append("You entered the incorrect password more than three times")
+                    if user.hash_id not in fail_timer.keys():
+                        fail_timer[user.hash_id] = round(time.time() * 1000)
+                    time_diff = round(time.time() * 1000) - fail_timer[user.hash_id]
+                    form.__dict__.get("errors").append("You entered the incorrect password more than three times. wait for %d sec" % round((WAIT_TIME - time_diff) / 1000))
                     return templates.TemplateResponse("login/login.html", form.__dict__)
 
                 check_password = Hasher.verify_password(form.password, user.hashed_password)
@@ -111,13 +122,14 @@ class AppLoginData(BaseModel):
     async def is_valid(self):
         if not self.email or not (self.email.__contains__("@")):
             self.errors.append("Email is required")
-        if not self.password or len(self.password) < routers.signup.forms.PASSWORD_LENGTH:
-            self.errors.append("A valid password is required")
-        if len(self.token) != 6:
-            self.errors.append("Enter valid token")
+        # if not self.password or len(self.password) < routers.signup.forms.PASSWORD_LENGTH:
+        #     self.errors.append("A valid password is required")
+        # if len(self.token) != 6:
+        #     self.errors.append("Enter valid token")
         if not self.errors:
             return True
         return False
+
 
 
 @router.post('/login_from_app')
@@ -136,10 +148,19 @@ async def login_from_app(app_login_data: AppLoginData, db: Session = Depends(get
                 'errorCode': -1,
                 'msg': 'Your email is not verified. check your email inbox.'
             }
+        if user.hash_id in fail_timer.keys():
+            time_diff = round(time.time() * 1000) - fail_timer[user.hash_id]
+            if time_diff > 1 * 1 * 60 * 1000: # one hour
+                fail_timer.pop(user.hash_id)
+                user.fail_counter = 0
+                db.commit()
         if user.fail_counter >= 3:
+            if user.hash_id not in fail_timer.keys():
+                fail_timer[user.hash_id] = round(time.time() * 1000)
+            time_diff = round(time.time() * 1000) - fail_timer[user.hash_id]
             return {
                 'errorCode': -1,
-                'msg': 'You entered the incorrect password more than three times'
+                'msg': "You entered the incorrect password more than three times. wait for %d sec" % round((WAIT_TIME - time_diff) / 1000)
             }
         check_password = Hasher.verify_password(app_login_data.password, user.hashed_password)
         check_otp = OTP.verify_otp(user.secret, app_login_data.token)
