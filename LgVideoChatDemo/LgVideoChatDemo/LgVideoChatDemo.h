@@ -23,6 +23,8 @@ extern TVoipAttr VoipAttr;
 extern char LocalIpAddress[512];
 
 int checkReceivedCall(void);
+void SetCallMessage(std::wstring firstname, std::wstring lastname, std::wstring email);
+std::wstring GetCallMessage(void);
 //-----------------------------------------------------------------
 // END of File
 //-----------------------------------------------------------------
