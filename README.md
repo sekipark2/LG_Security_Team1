@@ -1,7 +1,5 @@
 # LG_Security_Team1
 
-[Server Requirements](Server.md)
-
 ## Requirement
 1. The ability for the **user to register with the system**. This specific requirement has the following subcomponents.
     1. The user shall provide the system their email address and password. 
