@@ -355,7 +355,6 @@ static DWORD WINAPI ThreadVideoClient(LPVOID ivalue)
     VideoClientCleanup();
     std::cout << "============ Video Client Exiting =============" << std::endl;
     SetIsCalling(false);
-    ReinitializeAesKey();
     return 0;
 }
 //-----------------------------------------------------------------

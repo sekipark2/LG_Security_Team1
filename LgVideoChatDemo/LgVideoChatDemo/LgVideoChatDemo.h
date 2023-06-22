@@ -7,6 +7,7 @@
 #define WM_REMOTE_CONNECT      WM_USER+2
 #define WM_REMOTE_LOST         WM_USER+3
 #define WM_VAD_STATE           WM_USER+4
+#define WM_REMOTE_DISCONNECTED WM_USER+5
 
 #define VIDEO_PORT       10000
 #define VOIP_LOCAL_PORT  10001

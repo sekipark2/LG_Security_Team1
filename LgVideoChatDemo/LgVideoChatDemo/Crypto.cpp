@@ -18,7 +18,6 @@ std::string g_recieved_rsa_pub_key;
 std::string g_rsa_pub_key;
 EVP_PKEY* g_rsa_key;
 unsigned char g_aes_key[AES_KEY_LENGTH];
-unsigned char g_origin_aes_key[AES_KEY_LENGTH];
 
 bool saveRSAKeyToFile(const std::string& filename, const EVP_PKEY* key,
     const std::string& passphrase, const std::string& pubkey);
@@ -238,10 +237,13 @@ void GetAesKey(unsigned char* aes_key, size_t aes_key_len, std::string filename)
         }
     }
 }
-void GenerateAesKey(unsigned char* aes_key, size_t aes_key_len) {
+bool GenerateAesKey(unsigned char* aes_key, size_t aes_key_len) {
     if (!RAND_bytes(aes_key, aes_key_len)) {
         std::cout << "Error during AES key generation" << std::endl;
+        return false;
     }
+
+    return true;
 }
 
 void RsaEncrypt(EVP_PKEY* pkey, const unsigned char* msg, size_t msg_len,
@@ -504,7 +506,9 @@ bool LoadAesKeyFromFile(const std::string& filename, unsigned char* key, size_t 
 void CryptoInitialize() {
     std::cout << "================ Crypto Initialize ==============" << std::endl;
     g_rsa_key = GenerateRsaKey(g_rsa_pub_key);
-    GenerateAesKey(g_aes_key, sizeof(g_aes_key));
+    if (!GenerateAesKey(g_aes_key, sizeof(g_aes_key))) {
+        std::cout << "Failed to generate aes key" << std::endl;
+    }
     g_recieved_rsa_pub_key = g_rsa_pub_key;
 
 #ifdef ENABLE_CRYPTO_TEST
@@ -648,7 +652,6 @@ bool ParsingEncryptedKeyData(unsigned int& call_status,
         std::cout << "ParsingEncryptedKeyData size error:" << decrypt_size - sizeof(unsigned int) << std::endl;
         return false;
     }
-    memcpy(g_origin_aes_key, g_aes_key, AES_KEY_LENGTH);
     memcpy(g_aes_key, decrypt_data + sizeof(unsigned int), AES_KEY_LENGTH);
     return true;
 }
@@ -730,6 +733,6 @@ void RsaEncryptWithRecievedKey(const unsigned char* msg, size_t msg_len,
         encrypted_msg, encrypted_msg_len);
 }
 
-void ReinitializeAesKey(void) {
-    memcpy(g_aes_key, g_origin_aes_key, AES_KEY_LENGTH);
+bool InitializeAesKey(void) {
+    return GenerateAesKey(g_aes_key, sizeof(g_aes_key));
 }

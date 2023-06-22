@@ -400,6 +400,10 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
         SendMessage(hWndMainToolbar, TB_SETSTATE, IDM_CONNECT,
             (LPARAM)MAKELONG(TBSTATE_ENABLED, 0));
         break;
+    case WM_REMOTE_DISCONNECTED:
+        std::cout << "WM_REMOTE_DISCONNECTED" << std::endl;
+        MessageBox(hWndMain, L"Call stopped!", L"Disconneced", MB_OK | MB_ICONINFORMATION);
+        break;
     case WM_VAD_STATE:
         {
           HWND hTempWnd;
@@ -795,7 +799,7 @@ static int OnConnect(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 return 0;
             }
             if (call_status = CallRequest(RemoteAddress, (const char*)hash_id.data(), hash_id.length())) {
-                if (call_status == 1)  DisplayMessageOkBox("Your call is rejected by authentication");
+                if (call_status == 1)  DisplayMessageOkBox("Your call is rejected by server refusal");
                 if (call_status == 2)  DisplayMessageOkBox("Your call is rejected by calling");
                 return 0;
             }
@@ -833,6 +837,7 @@ static int OnDisconnect(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         StopVideoClient();
         CloseCamera();
         std::cout << "Video Client Stopped" << std::endl;
+        MessageBox(hWnd, L"Call stopped!", L"Disconneced", MB_OK | MB_ICONINFORMATION);
     }
     SetIsCalling(false);
     return 1;

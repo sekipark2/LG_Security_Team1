@@ -61,7 +61,7 @@ int WriteDataTcp(SOCKET socket, unsigned char* data, int length)
                 std::cout << "send WSAEWOULDBLOCK" << std::endl;
                 bytes_written = 0;                
                 retry_count++;
-                if (retry_count > 15) return (SOCKET_ERROR);
+                if (retry_count > 100) return (SOCKET_ERROR);
                 else Sleep(10);
             }
             else return (SOCKET_ERROR);

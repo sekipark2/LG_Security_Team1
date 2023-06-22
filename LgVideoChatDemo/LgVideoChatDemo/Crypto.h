@@ -15,7 +15,7 @@ bool LoadAesKeyFromFile(const std::string& filename, unsigned char* key, size_t 
 bool SaveAesKeyToFile(const std::string& filename, const unsigned char* key, size_t keyLength);
 EVP_PKEY* GetRsaKey(std::string& pubkey);
 void GetAesKey(unsigned char* aes_key, size_t aes_key_len, std::string filename = "");
-void GenerateAesKey(unsigned char* aes_key, size_t aes_key_len);
+bool GenerateAesKey(unsigned char* aes_key, size_t aes_key_len);
 bool GetEncodedPublicKey(std::string& encoded_pub_key);
 bool GenerateEncryptedKeyData(std::string recieved_pub_key,
     const unsigned int call_status,
@@ -33,4 +33,4 @@ bool RsaDecryptWithKey(const unsigned char* msg, size_t msg_len,
 bool SetRecievedRsaPublicKey(std::string publickey);
 std::string Base64Decode(const std::string& encoded);
 std::string Base64Encode(const std::string& encoded);
-void ReinitializeAesKey(void);
+bool InitializeAesKey(void);

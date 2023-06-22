@@ -497,6 +497,7 @@ static void CleanUpClosedConnection(void)
     {
         CloseCamera();
         VoipVoiceStop();
+        PostMessage(hWndMain, WM_REMOTE_DISCONNECTED, 0, 0);
     }
     std::cout << "================ Server Disconnectd ==============" << std::endl;
     SetIsCalling(false);
