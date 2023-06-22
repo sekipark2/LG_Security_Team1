@@ -198,7 +198,7 @@ static DWORD WINAPI MakeThread(void* data)
                     call_status = CALL_STATUS_MISSING;
                 }
                 else {
-
+                    SetCallMessage(peer.firstName, peer.lastName, peer.email);
                     int ans = checkReceivedCall();
                     if (ans == CALL_STATUS_REJECT) { // 1: Answer call 2: Reject call
                         std::cout << "Request call is OK" << std::endl;

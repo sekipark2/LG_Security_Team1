@@ -23,6 +23,7 @@
 #define IDC_EDIT_IP                     1004
 #define IDC_LIST_CONTACTS               1005
 #define IDC_LIST_MISSEDCALL             1006
+#define IDC_INCOMINGCALL                1007
 #define IDC_STATIC                      -1
 
 // Next default values for new objects

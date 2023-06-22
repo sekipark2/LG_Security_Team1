@@ -90,6 +90,7 @@ static void SetStdOutToNewConsole(void);
 static void DisplayMessageOkBox(const char* Msg);
 static bool OnlyOneInstance(void);
 unsigned int call_response;
+std::wstring m_call_message;
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -592,8 +593,7 @@ static INT_PTR CALLBACK ReceiveCallProc(HWND hDlg, UINT message, WPARAM wParam, 
     {
         case WM_INITDIALOG:
         {
-        std::cout << "@@@ init dialog!! " << std::endl;
-            HWND hWnd = GetDlgItem(hDlg, IDC_LIST_MISSEDCALL);
+            SetDlgItemText(hDlg, IDC_INCOMINGCALL, GetCallMessage().c_str());
         }
         return (INT_PTR)TRUE;
 
@@ -624,9 +624,8 @@ static INT_PTR CALLBACK ReceiveCallProc(HWND hDlg, UINT message, WPARAM wParam, 
         break;
     
         case WM_CLOSE:
-        // 닫기 버튼 클릭 이벤트 처리
+        call_response = CALL_STATUS_REJECT;
         EndDialog(hDlg, IDCANCEL);
-        std::cout << "@@@ answer close!! " << std::endl;
         return TRUE;
     }
     return (INT_PTR)FALSE;
@@ -923,6 +922,24 @@ int checkReceivedCall(void) {
     DialogBox(hInst, MAKEINTRESOURCE(IDD_RECEIVECALLBOX), NULL, ReceiveCallProc);
     std::cout << "!!! get answer:" << call_response << std::endl;
     return call_response;
+}
+
+void SetCallMessage(std::wstring firstname, std::wstring lastname, std::wstring email)
+{
+    std::wstring caller;
+
+    caller += firstname;
+    caller += L" ";
+    caller += lastname;
+    caller += L"(";
+    caller += email;
+    caller += L")";
+
+    m_call_message = caller;
+}
+
+std::wstring GetCallMessage(void) {
+    return m_call_message;
 }
 //-----------------------------------------------------------------
 // END of File
