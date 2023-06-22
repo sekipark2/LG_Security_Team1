@@ -199,6 +199,31 @@ static DWORD WINAPI MakeThread(void* data)
                 }
                 else {
                     SetCallMessage(peer.firstName, peer.lastName, peer.email);
+
+                    std::wstring msg;
+                    msg += L"Accept ";
+                    msg += peer.firstName;
+                    msg += L" ";
+                    msg += peer.lastName;
+                    msg += L"(";
+                    msg += peer.email;
+                    msg += L")?";
+                    int ret = MessageBox(NULL, msg.c_str(), L"Incoming Call", MB_YESNO | MB_ICONQUESTION);
+                    switch (ret)
+                    {
+                        case IDNO:
+                            std::cout << "Request call is rejected" << std::endl;
+                            call_status = CALL_STATUS_REJECT;
+                            break;
+                        case IDYES:
+                            std::cout << "Request call is accepted" << std::endl;
+                            call_status = CALL_STATUS_OK;
+                            if (!InitializeAesKey()) {
+                                std::cout << "Fail to initialize aes key" << std::endl;
+                            }
+                            break;
+                    }
+#if 0
                     int ans = checkReceivedCall();
                     if (ans == CALL_STATUS_REJECT) { // 1: Accept call 2: Reject call
                         std::cout << "Request call is rejected" << std::endl;
@@ -211,6 +236,7 @@ static DWORD WINAPI MakeThread(void* data)
                             std::cout << "Fail to initialize aes key" << std::endl;
                         }
                     }
+#endif
 
                     if (!SetRecievedRsaPublicKey(Base64Decode(utility::conversions::to_utf8string(peer.key)))) {
                         std::cout << "Failed to set pub key" << std::endl;
