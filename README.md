@@ -1,4 +1,7 @@
 # LG_Security_Team1
+## Documentation
+Documents are in docs folder.
+Project Demo : https://www.youtube.com/watch?v=_a4pD-4QljE
 
 ## Requirement
 1. The ability for the **user to register with the system**. This specific requirement has the following subcomponents.
