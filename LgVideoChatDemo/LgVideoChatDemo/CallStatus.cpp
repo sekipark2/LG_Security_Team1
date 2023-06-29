@@ -86,7 +86,7 @@ void StopWaitCall(void) {
 static DWORD WINAPI WaitCallRequest(LPVOID ivalue)
 {
     std::cout << "===== Waiting CallRequest Start ======" << std::endl;
-    // Create socket   
+    // Create socket
     SOCKET listenSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (listenSocket == INVALID_SOCKET)
     {
@@ -175,7 +175,7 @@ static DWORD WINAPI MakeThread(void* data)
     {
         if (receiveBytes > 0)
         {
-            printf("Server TRACE - Receive message (%d bytes)\n", receiveBytes);
+            printf("Server TRACE - Receive message (%d bytes)%s\n", receiveBytes, messageBuffer);
             if (!RsaDecryptWithKey((const unsigned char*)messageBuffer, receiveBytes,
                 decrypted_data, &decrypted_data_size)) {
                 std::cout << "RsaDecryptWithKey fail" << std::endl;
