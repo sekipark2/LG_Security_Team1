@@ -21,7 +21,7 @@ jobs:
         uses: SonarSource/sonarcloud-github-c-cpp@v1
       - name: Run build-wrapper
         run: |
-          build-wrapper-win-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} msbuild LgVideoChatDemo.sln /t:rebuild /nodeReuse:false /p:Configuration=Debug /p:Platform=x64
+          build-wrapper-win-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} msbuild LgVideoChatDemo/LgVideoChatDemo.sln /t:rebuild /nodeReuse:false /p:Configuration=Debug /p:Platform=x64
       - name: Run sonar-scanner
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
